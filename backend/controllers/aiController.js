@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import User from '../models/User.js';
+import deepseekService from '../services/deepseekService.js';
 
 const SUPPORTED_MIME_TYPES = [
   'text/plain',
@@ -28,22 +29,18 @@ export const analyzeHealthData = async (req, res) => {
       return res.status(500).json({ error: '读取文件失败: ' + error.message });
     }
 
-    // 模拟AI分析结果
+    // 使用DeepSeek进行文本分析
+    const deepseekResponse = await deepseekService.analyzeText(fileContent);
+    
+    // 转换为与现有格式兼容的结构
     const analysis = {
-      summary: '根据健康数据分析，整体状况良好',
-      recommendations: [
-        '建议增加运动量',
-        '注意作息规律',
-        '保持均衡饮食'
-      ],
-      riskFactors: [
-        '压力指数偏高',
-        '睡眠质量需要改善'
-      ],
+      summary: deepseekResponse.summary,
+      recommendations: deepseekResponse.recommendations.map(rec => rec.suggestion),
+      riskFactors: deepseekResponse.risks.map(risk => risk.description),
       metrics: {
-        healthScore: 85,
-        stressLevel: 'medium',
-        sleepQuality: 'fair'
+        healthScore: deepseekResponse.metrics.healthScore,
+        stressLevel: deepseekResponse.metrics.riskLevel,
+        sleepQuality: 'medium' // 默认值，因为DeepSeek不直接提供这个指标
       }
     };
 
