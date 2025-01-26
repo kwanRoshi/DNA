@@ -78,6 +78,13 @@ const DataFormComponent = () => {
       setError('');
       setUploadProgress(0);
 
+      // 验证登录状态
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('请先登录后再上传文件');
+        return;
+      }
+
       const response = await healthData.analyze(formData, {
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
