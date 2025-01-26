@@ -48,14 +48,23 @@ export const loginUser = async (req, res) => {
 
     // 根据钱包类型验证签名
     let isValidSignature = false;
-    if (walletType === 'okx') {
-      isValidSignature = await okxService.verifyWalletSignature(walletAddress, signature, message);
-    } else {
-      isValidSignature = verifySignature(message, signature, walletAddress);
-    }
-
-    if (!isValidSignature) {
-      return res.status(400).json({ error: '签名验证失败' });
+    try {
+      if (walletType === 'okx') {
+        isValidSignature = await okxService.verifyWalletSignature(walletAddress, signature, message);
+        if (!isValidSignature) {
+          console.warn(`OKX钱包签名验证失败 - 地址: ${walletAddress}`);
+          return res.status(400).json({ error: 'OKX钱包签名验证失败' });
+        }
+      } else {
+        isValidSignature = verifySignature(message, signature, walletAddress);
+        if (!isValidSignature) {
+          console.warn(`MetaMask签名验证失败 - 地址: ${walletAddress}`);
+          return res.status(400).json({ error: '签名验证失败' });
+        }
+      }
+    } catch (error) {
+      console.error('签名验证过程出错:', error);
+      return res.status(500).json({ error: '签名验证过程出错，请重试' });
     }
 
     // 查找或创建用户
