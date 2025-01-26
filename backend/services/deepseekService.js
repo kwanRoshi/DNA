@@ -5,18 +5,20 @@ import fs from 'fs';
 class DeepseekService {
   constructor() {
     this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.apiUrl = 'https://api.deepseek.com/v1';
+    this.apiUrl = 'https://api.deepseek.com/v3';
     this.client = axios.create({
       baseURL: this.apiUrl,
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     });
   }
 
-  // 图片分析提示词模板
+  // 分析提示词模板
   static ANALYSIS_PROMPTS = {
+    // 图片分析提示词
     general: `请分析这张图片中的健康相关信息，包括但不限于：
 1. 主要健康指标
 2. 可能存在的健康风险
@@ -35,7 +37,22 @@ class DeepseekService {
 2. 潜在的健康风险
 3. 改善建议
 4. 可以采取的具体行动
-请提供实用的、可执行的建议。`
+请提供实用的、可执行的建议。`,
+
+    // 文本分析提示词
+    text_health: `请分析以下健康相关文本，重点关注：
+1. 主要健康状况和指标
+2. 潜在的健康风险
+3. 生活方式建议
+4. 需要改善的方面
+请提供专业的分析和具体可行的建议。`,
+
+    text_medical: `请分析以下医疗相关文本，重点关注：
+1. 关键健康指标解读
+2. 异常值分析
+3. 健康风险评估
+4. 建议的后续措施
+请用专业但易懂的语言描述，并给出明确的建议。`
   };
 
   /**
@@ -154,6 +171,124 @@ class DeepseekService {
     if (averageSeverity <= 1.5) return 'low';
     if (averageSeverity <= 2.5) return 'medium';
     return 'high';
+  }
+
+  /**
+   * 分析文本内容
+   * @param {string} text - 要分析的文本内容
+   * @param {string} analysisType - 分析类型（text_health/text_medical）
+   * @returns {Promise<Object>} 分析结果
+   */
+  async analyzeText(text, analysisType = 'text_health') {
+    try {
+      // 调用 DeepSeek API v3
+      const response = await this.client.post('/chat/completions', {
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的健康顾问，负责分析健康数据并提供专业的建议。'
+          },
+          {
+            role: 'user',
+            content: `${DeepseekService.ANALYSIS_PROMPTS[analysisType]}\n\n${text}`
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+        response_format: { type: 'json_object' }
+      });
+
+      // 处理响应
+      return this.processTextResponse(response.data);
+    } catch (error) {
+      console.error('文本分析失败:', error);
+      throw new Error(error.response?.data?.error || '文本分析失败');
+    }
+  }
+
+  /**
+   * 处理文本分析响应
+   * @param {Object} rawResponse - API 原始响应
+   * @returns {Object} 处理后的分析结果
+   */
+  processTextResponse(rawResponse) {
+    // 从原始响应中提取结构化信息
+    const analysis = this.extractStructuredInfo(rawResponse.choices[0].message.content);
+
+    // 结构化返回结果
+    return {
+      summary: analysis.summary,
+      confidence: rawResponse.confidence || 0.8,
+      metrics: {
+        healthScore: this.calculateHealthScore(analysis),
+        riskLevel: this.assessRiskLevel(analysis.risks),
+        reliabilityScore: rawResponse.confidence || 0.8
+      },
+      recommendations: analysis.recommendations.map(rec => ({
+        category: rec.category || '建议',
+        suggestion: rec.text,
+        priority: rec.priority || 'medium'
+      })),
+      risks: analysis.risks.map(risk => ({
+        type: risk.type || '健康风险',
+        severity: risk.severity || 'medium',
+        description: risk.description
+      })),
+      rawAnalysis: rawResponse
+    };
+  }
+
+  /**
+   * 从文本响应中提取结构化信息
+   * @param {string} text - DeepSeek响应文本
+   * @returns {Object} 结构化信息
+   */
+  extractStructuredInfo(text) {
+    // 初始化默认结构
+    const defaultStructure = {
+      summary: '',
+      recommendations: [],
+      risks: [],
+      generalHealthScore: 75,
+      riskFactorsScore: 75,
+      lifestyleScore: 75
+    };
+
+    try {
+      // 尝试将文本解析为JSON（如果DeepSeek返回JSON格式）
+      const parsed = JSON.parse(text);
+      return {
+        ...defaultStructure,
+        ...parsed
+      };
+    } catch (e) {
+      // 如果不是JSON，进行文本分析提取结构化信息
+      const sections = text.split('\n\n');
+      const structure = { ...defaultStructure };
+
+      // 提取摘要（第一段）
+      structure.summary = sections[0] || '';
+
+      // 提取建议和风险（根据关键词）
+      sections.forEach(section => {
+        if (section.toLowerCase().includes('建议') || section.toLowerCase().includes('推荐')) {
+          structure.recommendations.push({
+            text: section,
+            category: '一般建议',
+            priority: 'medium'
+          });
+        } else if (section.toLowerCase().includes('风险') || section.toLowerCase().includes('警告')) {
+          structure.risks.push({
+            description: section,
+            type: '健康风险',
+            severity: 'medium'
+          });
+        }
+      });
+
+      return structure;
+    }
   }
 }
 
