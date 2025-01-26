@@ -19,6 +19,10 @@ const router = express.Router();
 
 // 用户认证路由
 router.post('/login', validateWalletAddress, catchAsync(loginUser));
+router.post('/login-okx', validateWalletAddress, catchAsync((req, res, next) => {
+  req.body.walletType = 'okx';  // 强制设置钱包类型为OKX
+  return loginUser(req, res, next);
+}));
 router.get('/user', protect, catchAsync(getUserData));
 
 // 健康数据分析路由
