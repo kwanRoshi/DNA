@@ -4,16 +4,44 @@ import fs from 'fs';
 
 class DeepseekService {
   constructor() {
+    // DeepSeek API v3配置
+    // API文档: https://api-docs.deepseek.com/zh-cn/
     this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.apiUrl = 'https://api.deepseek.com/v3';
+    if (!this.apiKey) {
+      console.warn('[DeepSeek] API key not found in environment variables');
+      throw new Error('DeepSeek API key is required');
+    }
+    this.apiUrl = 'https://api.deepseek.com/v3/chat/completions';
     this.client = axios.create({
       baseURL: this.apiUrl,
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      validateStatus: function (status) {
+        return status >= 200 && status < 500;
+      },
+      timeout: 30000 // 30秒超时
     });
+
+    // 添加请求拦截器用于日志记录
+    this.client.interceptors.request.use(config => {
+      console.log(`[DeepSeek API Request] ${config.method.toUpperCase()} ${config.url}`);
+      return config;
+    });
+
+    // 添加响应拦截器用于错误处理
+    this.client.interceptors.response.use(
+      response => {
+        console.log(`[DeepSeek API Response] Status: ${response.status}`);
+        return response;
+      },
+      error => {
+        console.error('[DeepSeek API Error]', error.response?.data || error.message);
+        throw error;
+      }
+    );
   }
 
   // 分析提示词模板
@@ -40,19 +68,55 @@ class DeepseekService {
 请提供实用的、可执行的建议。`,
 
     // 文本分析提示词
-    text_health: `请分析以下健康相关文本，重点关注：
-1. 主要健康状况和指标
-2. 潜在的健康风险
-3. 生活方式建议
-4. 需要改善的方面
-请提供专业的分析和具体可行的建议。`,
+    text_health: `作为专业的健康顾问，请对以下健康相关文本进行全面分析，重点关注：
 
-    text_medical: `请分析以下医疗相关文本，重点关注：
-1. 关键健康指标解读
-2. 异常值分析
-3. 健康风险评估
-4. 建议的后续措施
-请用专业但易懂的语言描述，并给出明确的建议。`
+1. 健康状况综述
+   - 整体健康评估
+   - 关键健康指标分析
+   - 生活方式评估
+
+2. 风险分析
+   - 当前存在的健康风险
+   - 潜在的健康隐患
+   - 风险等级评估（低/中/高）
+
+3. 改善建议
+   - 生活方式调整建议
+   - 饮食营养建议
+   - 运动建议
+   - 作息时间建议
+
+4. 后续跟进
+   - 需要定期监测的指标
+   - 建议进行的健康检查
+   - 预防保健措施
+
+请以专业但通俗易懂的语言提供分析结果，确保建议具体且可执行。`,
+
+    text_medical: `作为专业的医疗顾问，请对以下医疗检验报告进行专业解读，重点关注：
+
+1. 检验指标解读
+   - 异常指标识别和分析
+   - 指标间关联性分析
+   - 参考值范围对比
+
+2. 健康风险评估
+   - 当前健康问题诊断
+   - 潜在疾病风险评估
+   - 并发症风险分析
+
+3. 诊疗建议
+   - 建议就医科室
+   - 建议进行的进一步检查
+   - 用药建议（如适用）
+   - 生活方式调整建议
+
+4. 预防保健措施
+   - 短期改善建议
+   - 长期健康管理计划
+   - 定期复查建议
+
+请使用专业但易于理解的语言，提供详细的分析和明确的建议。对于异常指标，请特别说明其可能的原因和影响。`
   };
 
   /**
@@ -182,27 +246,37 @@ class DeepseekService {
   async analyzeText(text, analysisType = 'text_health') {
     try {
       // 调用 DeepSeek API v3
-      const response = await this.client.post('/chat/completions', {
+      const response = await this.client.post('', {
         model: 'deepseek-chat',
         messages: [
           {
             role: 'system',
-            content: '你是一个专业的健康顾问，负责分析健康数据并提供专业的建议。'
+            content: '你是一个专业的健康顾问，负责分析健康数据并提供专业的建议。请以JSON格式返回分析结果。'
           },
           {
             role: 'user',
             content: `${DeepseekService.ANALYSIS_PROMPTS[analysisType]}\n\n${text}`
           }
         ],
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 2000,
+        temperature: 0.3, // 降低随机性以获得更稳定的结果
+        top_p: 0.8,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1,
         response_format: { type: 'json_object' }
       });
 
       // 处理响应
-      return this.processTextResponse(response.data);
+      const responseData = response.data;
+      if (!responseData.choices || !responseData.choices[0] || !responseData.choices[0].message) {
+        throw new Error('Invalid API response format');
+      }
+      return this.processTextResponse(responseData);
     } catch (error) {
       console.error('文本分析失败:', error);
+      if (error.message === 'Invalid API response format') {
+        throw error;
+      }
       throw new Error(error.response?.data?.error || '文本分析失败');
     }
   }
@@ -213,30 +287,84 @@ class DeepseekService {
    * @returns {Object} 处理后的分析结果
    */
   processTextResponse(rawResponse) {
-    // 从原始响应中提取结构化信息
-    const analysis = this.extractStructuredInfo(rawResponse.choices[0].message.content);
+    try {
+      // 验证响应格式
+      if (!rawResponse?.choices?.[0]?.message?.content) {
+        console.error('[DeepSeek] 无效的API响应格式:', rawResponse);
+        throw new Error('无效的API响应格式');
+      }
 
-    // 结构化返回结果
-    return {
-      summary: analysis.summary,
-      confidence: rawResponse.confidence || 0.8,
-      metrics: {
-        healthScore: this.calculateHealthScore(analysis),
-        riskLevel: this.assessRiskLevel(analysis.risks),
-        reliabilityScore: rawResponse.confidence || 0.8
-      },
-      recommendations: analysis.recommendations.map(rec => ({
-        category: rec.category || '建议',
-        suggestion: rec.text,
-        priority: rec.priority || 'medium'
-      })),
-      risks: analysis.risks.map(risk => ({
-        type: risk.type || '健康风险',
-        severity: risk.severity || 'medium',
-        description: risk.description
-      })),
-      rawAnalysis: rawResponse
-    };
+      let analysis;
+      try {
+        // 尝试解析JSON响应
+        analysis = this.extractStructuredInfo(rawResponse.choices[0].message.content);
+      } catch (parseError) {
+        console.error('[DeepSeek] 解析响应内容失败:', parseError);
+        throw new Error('解析健康数据失败');
+      }
+
+      // 验证必要字段
+      if (!analysis.summary) {
+        console.warn('[DeepSeek] 缺少摘要信息');
+        analysis.summary = '无法生成健康数据摘要';
+      }
+
+      if (!Array.isArray(analysis.recommendations)) {
+        console.warn('[DeepSeek] 建议格式无效');
+        analysis.recommendations = [];
+      }
+
+      if (!Array.isArray(analysis.risks)) {
+        console.warn('[DeepSeek] 风险格式无效');
+        analysis.risks = [];
+      }
+
+      // 结构化返回结果
+      return {
+        summary: analysis.summary,
+        confidence: analysis.confidence || rawResponse.confidence || 0.8,
+        metrics: {
+          healthScore: this.calculateHealthScore(analysis),
+          riskLevel: this.assessRiskLevel(analysis.risks),
+          reliabilityScore: analysis.confidence || rawResponse.confidence || 0.8,
+          stressLevel: analysis.metrics?.stressLevel || 'medium',
+          sleepQuality: analysis.metrics?.sleepQuality || 'medium'
+        },
+        recommendations: analysis.recommendations.map(rec => {
+          if (typeof rec === 'string') {
+            return {
+              category: '一般建议',
+              suggestion: rec,
+              priority: 'medium'
+            };
+          }
+          return {
+            category: rec.category || '建议',
+            suggestion: rec.text || rec.suggestion || rec,
+            priority: rec.priority || 'medium'
+          };
+        }).filter(rec => rec.suggestion),
+        risks: analysis.risks.map(risk => {
+          if (typeof risk === 'string') {
+            return {
+              type: '健康风险',
+              severity: 'medium',
+              description: risk
+            };
+          }
+          return {
+            type: risk.type || '健康风险',
+            severity: risk.severity || 'medium',
+            description: risk.description || risk
+          };
+        }).filter(risk => risk.description),
+        rawAnalysis: rawResponse
+      };
+    } catch (error) {
+      console.error('[DeepSeek] 处理响应失败:', error);
+      // 返回用户友好的错误信息
+      throw new Error(`处理健康数据失败: ${error.message}`);
+    }
   }
 
   /**

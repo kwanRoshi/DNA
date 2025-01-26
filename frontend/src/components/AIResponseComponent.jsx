@@ -47,18 +47,84 @@ const AIResponseComponent = () => {
     });
   };
 
+  const renderMetrics = (metrics) => {
+    const metricLabels = {
+      healthScore: '健康评分',
+      riskLevel: '风险等级',
+      reliabilityScore: '可信度',
+      stressLevel: '压力水平',
+      sleepQuality: '睡眠质量'
+    };
+
+    return (
+      <div className="metrics-grid">
+        {Object.entries(metrics).map(([key, value]) => (
+          <div key={key} className="metric-item">
+            <div className="metric-label">{metricLabels[key] || key}</div>
+            <div className="metric-value">{value}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderRecommendations = (recommendations) => {
+    if (!Array.isArray(recommendations) || recommendations.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="recommendations-section">
+        <h4>改善建议</h4>
+        <ul className="recommendations-list">
+          {recommendations.map((rec, index) => (
+            <li key={index} className={`priority-${rec.priority || 'medium'}`}>
+              {rec.category && <span className="category">{rec.category}</span>}
+              <span className="suggestion">{rec.suggestion || rec}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  const renderRiskFactors = (risks) => {
+    if (!Array.isArray(risks) || risks.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="risks-section">
+        <h4>健康风险</h4>
+        <ul className="risks-list">
+          {risks.map((risk, index) => (
+            <li key={index} className={`severity-${risk.severity || 'medium'}`}>
+              {risk.type && <span className="risk-type">{risk.type}</span>}
+              <span className="description">{risk.description}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
   const renderAnalysisResult = (result) => {
     if (typeof result === 'string') {
       return <p>{result}</p>;
     }
-    
+
     return (
       <div className="analysis-details">
-        {Object.entries(result).map(([key, value]) => (
-          <div key={key} className="analysis-item">
-            <strong>{key}:</strong> {value}
+        {result.summary && (
+          <div className="summary-section">
+            <h4>分析摘要</h4>
+            <p>{result.summary}</p>
           </div>
-        ))}
+        )}
+        
+        {result.metrics && renderMetrics(result.metrics)}
+        {result.recommendations && renderRecommendations(result.recommendations)}
+        {result.risks && renderRiskFactors(result.risks)}
       </div>
     );
   };

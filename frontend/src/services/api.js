@@ -72,13 +72,18 @@ api.interceptors.response.use(
 
 // 认证相关API
 export const auth = {
-  login: (walletAddress) => api.post('/login', { walletAddress }),
+  login: (data) => api.post('/login', data),
   getUserData: () => api.get('/user')
 };
 
 // 健康数据分析API
 export const healthData = {
-  analyze: (formData) => api.post('/analyze', formData),
+  analyze: (formData) => api.post('/analyze', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    timeout: 30000 // 上传文件给30秒超时
+  }),
   getHistory: () => api.get('/analysis-history')
 };
 

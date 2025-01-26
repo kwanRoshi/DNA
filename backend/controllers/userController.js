@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import { generateToken } from '../middleware/authMiddleware.js';
 import { ethers } from 'ethers';
+import okxService from '../services/okxService.js';
 
 // 验证签名
 const verifySignature = (message, signature, walletAddress) => {
@@ -29,7 +30,7 @@ const isValidTimestamp = (message) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { walletAddress, signature, message } = req.body;
+    const { walletAddress, signature, message, walletType = 'metamask' } = req.body;
     
     if (!walletAddress || !signature || !message) {
       return res.status(400).json({ error: '缺少必要的登录信息' });
@@ -45,9 +46,35 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ error: '登录请求已过期' });
     }
 
-    // 验证签名
-    if (!verifySignature(message, signature, walletAddress)) {
-      return res.status(400).json({ error: '签名验证失败' });
+    // 验证钱包类型
+    if (!['metamask', 'okx'].includes(walletType)) {
+      console.warn(`不支持的钱包类型: ${walletType}`);
+      return res.status(400).json({ error: '不支持的钱包类型' });
+    }
+
+    // 根据钱包类型验证签名
+    let isValidSignature = false;
+    try {
+      if (walletType === 'okx') {
+        console.log(`开始验证OKX钱包签名 - 地址: ${walletAddress}`);
+        isValidSignature = await okxService.verifyWalletSignature(walletAddress, signature, message);
+        if (!isValidSignature) {
+          console.warn(`OKX钱包签名验证失败 - 地址: ${walletAddress}`);
+          return res.status(400).json({ error: 'OKX钱包签名验证失败' });
+        }
+        console.log(`OKX钱包签名验证成功 - 地址: ${walletAddress}`);
+      } else {
+        console.log(`开始验证MetaMask签名 - 地址: ${walletAddress}`);
+        isValidSignature = verifySignature(message, signature, walletAddress);
+        if (!isValidSignature) {
+          console.warn(`MetaMask签名验证失败 - 地址: ${walletAddress}`);
+          return res.status(400).json({ error: '签名验证失败' });
+        }
+        console.log(`MetaMask签名验证成功 - 地址: ${walletAddress}`);
+      }
+    } catch (error) {
+      console.error('签名验证过程出错:', error);
+      return res.status(500).json({ error: '签名验证过程出错，请重试' });
     }
 
     // 查找或创建用户
