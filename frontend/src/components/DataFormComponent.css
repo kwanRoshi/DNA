@@ -1,0 +1,159 @@
+.data-form-container {
+  padding: 20px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.data-form-container:hover {
+  transform: translateY(-2px);
+}
+
+.data-form-container h3 {
+  margin-bottom: 1.5rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-align: center;
+}
+
+.file-upload {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.file-upload:hover {
+  border-color: #007bff;
+  background: #f1f8ff;
+}
+
+.file-upload.drag-over {
+  border-color: #28a745;
+  background: #e8f5e9;
+}
+
+.file-upload.uploading {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.upload-prompt {
+  color: #666;
+}
+
+.upload-hint {
+  font-size: 0.9em;
+  color: #888;
+  margin-top: 8px;
+}
+
+.file-info {
+  color: #333;
+}
+
+.file-info p {
+  margin: 5px 0;
+}
+
+.upload-progress {
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #007bff;
+  transition: width 0.3s ease;
+}
+
+.button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.button .loading {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error {
+  color: #dc3545;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  font-size: 0.9em;
+}
+
+.success {
+  color: #28a745;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  font-size: 0.9em;
+}
+
+@media (max-width: 480px) {
+  .data-form-container {
+    padding: 15px;
+  }
+
+  .file-upload {
+    padding: 20px;
+  }
+
+  .button {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
