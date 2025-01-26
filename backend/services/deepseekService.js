@@ -4,14 +4,22 @@ import fs from 'fs';
 
 class DeepseekService {
   constructor() {
+    // DeepSeek API v3配置
+    // API文档: https://api-docs.deepseek.com/zh-cn/
     this.apiKey = process.env.DEEPSEEK_API_KEY;
-    this.apiUrl = 'https://api.deepseek.com/v3';
+    if (!this.apiKey) {
+      console.warn('DeepSeek API key not found in environment variables');
+    }
+    this.apiUrl = 'https://api.deepseek.com/v3/chat/completions';
     this.client = axios.create({
       baseURL: this.apiUrl,
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
+      },
+      validateStatus: function (status) {
+        return status >= 200 && status < 500;
       }
     });
   }
@@ -200,9 +208,16 @@ class DeepseekService {
       });
 
       // 处理响应
-      return this.processTextResponse(response.data);
+      const responseData = response.data;
+      if (!responseData.choices || !responseData.choices[0] || !responseData.choices[0].message) {
+        throw new Error('Invalid API response format');
+      }
+      return this.processTextResponse(responseData);
     } catch (error) {
       console.error('文本分析失败:', error);
+      if (error.message === 'Invalid API response format') {
+        throw error;
+      }
       throw new Error(error.response?.data?.error || '文本分析失败');
     }
   }
@@ -213,8 +228,12 @@ class DeepseekService {
    * @returns {Object} 处理后的分析结果
    */
   processTextResponse(rawResponse) {
-    // 从原始响应中提取结构化信息
-    const analysis = this.extractStructuredInfo(rawResponse.choices[0].message.content);
+    try {
+      if (!rawResponse?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid API response format');
+      }
+      // 从原始响应中提取结构化信息
+      const analysis = this.extractStructuredInfo(rawResponse.choices[0].message.content);
 
     // 结构化返回结果
     return {
@@ -237,6 +256,10 @@ class DeepseekService {
       })),
       rawAnalysis: rawResponse
     };
+    } catch (error) {
+      console.error('处理DeepSeek响应失败:', error);
+      throw error;
+    }
   }
 
   /**

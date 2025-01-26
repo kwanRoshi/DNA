@@ -13,9 +13,11 @@ jest.mock('../models/User.js', () => ({
 }));
 
 // Mock deepseekService
+const mockAnalyzeText = jest.fn();
 jest.mock('../services/deepseekService.js', () => ({
+  __esModule: true,
   default: {
-    analyzeText: jest.fn()
+    analyzeText: (...args) => mockAnalyzeText(...args)
   }
 }));
 
@@ -48,39 +50,43 @@ describe('AI Controller', () => {
     it('应该分析健康数据文件并返回结果', async () => {
       const fileContent = 'test data';
       const mockDeepseekResponse = {
-        summary: '测试分析摘要',
-        recommendations: [
-          { suggestion: '建议增加运动量', category: '运动', priority: 'high' },
-          { suggestion: '注意作息规律', category: '生活习惯', priority: 'medium' }
-        ],
-        risks: [
-          { description: '压力指数偏高', type: '心理健康', severity: 'medium' },
-          { description: '睡眠质量需要改善', type: '生活习惯', severity: 'low' }
-        ],
-        metrics: {
-          healthScore: 85,
-          riskLevel: 'medium',
-          reliabilityScore: 0.8
-        }
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              summary: '测试分析摘要',
+              recommendations: [
+                { text: '建议增加运动量', category: '运动', priority: 'high' },
+                { text: '注意作息规律', category: '生活习惯', priority: 'medium' }
+              ],
+              risks: [
+                { description: '压力指数偏高', type: '心理健康', severity: 'medium' },
+                { description: '睡眠质量需要改善', type: '生活习惯', severity: 'low' }
+              ],
+              generalHealthScore: 85,
+              riskFactorsScore: 75,
+              lifestyleScore: 75
+            })
+          }
+        }]
       };
 
       fs.readFile.mockResolvedValue(fileContent);
-      deepseekService.analyzeText.mockResolvedValue(mockDeepseekResponse);
+      mockAnalyzeText.mockResolvedValue(mockDeepseekResponse);
       User.findOneAndUpdate.mockResolvedValue({});
 
       await analyzeHealthData(mockReq, mockRes);
 
       expect(fs.readFile).toHaveBeenCalledWith('/test/path', 'utf-8');
-      expect(deepseekService.analyzeText).toHaveBeenCalledWith(fileContent);
+      expect(mockAnalyzeText).toHaveBeenCalledWith(fileContent);
       expect(User.findOneAndUpdate).toHaveBeenCalled();
       expect(mockRes.json).toHaveBeenCalledWith({
         analysis: {
-          summary: mockDeepseekResponse.summary,
-          recommendations: mockDeepseekResponse.recommendations.map(rec => rec.suggestion),
-          riskFactors: mockDeepseekResponse.risks.map(risk => risk.description),
+          summary: JSON.parse(mockDeepseekResponse.choices[0].message.content).summary,
+          recommendations: JSON.parse(mockDeepseekResponse.choices[0].message.content).recommendations.map(rec => rec.text),
+          riskFactors: JSON.parse(mockDeepseekResponse.choices[0].message.content).risks.map(risk => risk.description),
           metrics: {
-            healthScore: mockDeepseekResponse.metrics.healthScore,
-            stressLevel: mockDeepseekResponse.metrics.riskLevel,
+            healthScore: JSON.parse(mockDeepseekResponse.choices[0].message.content).generalHealthScore,
+            stressLevel: 'medium',
             sleepQuality: 'medium'
           }
         }
@@ -123,7 +129,7 @@ describe('AI Controller', () => {
     it('应该处理DeepSeek API错误', async () => {
       const fileContent = 'test data';
       fs.readFile.mockResolvedValue(fileContent);
-      deepseekService.analyzeText.mockRejectedValue(new Error('API error'));
+      mockAnalyzeText.mockRejectedValue(new Error('API error'));
 
       await analyzeHealthData(mockReq, mockRes);
 

@@ -31,16 +31,17 @@ export const analyzeHealthData = async (req, res) => {
 
     // 使用DeepSeek进行文本分析
     const deepseekResponse = await deepseekService.analyzeText(fileContent);
+    const parsedContent = JSON.parse(deepseekResponse.choices[0].message.content);
     
     // 转换为与现有格式兼容的结构
     const analysis = {
-      summary: deepseekResponse.summary,
-      recommendations: deepseekResponse.recommendations.map(rec => rec.suggestion),
-      riskFactors: deepseekResponse.risks.map(risk => risk.description),
+      summary: parsedContent.summary,
+      recommendations: parsedContent.recommendations.map(rec => rec.text),
+      riskFactors: parsedContent.risks.map(risk => risk.description),
       metrics: {
-        healthScore: deepseekResponse.metrics.healthScore,
-        stressLevel: deepseekResponse.metrics.riskLevel,
-        sleepQuality: 'medium' // 默认值，因为DeepSeek不直接提供这个指标
+        healthScore: parsedContent.generalHealthScore,
+        stressLevel: 'medium',
+        sleepQuality: 'medium' // 默认值
       }
     };
 

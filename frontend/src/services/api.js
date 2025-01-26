@@ -72,7 +72,7 @@ api.interceptors.response.use(
 
 // 认证相关API
 export const auth = {
-  login: (walletAddress) => api.post('/login', { walletAddress }),
+  login: (data) => api.post('/login', data),
   getUserData: () => api.get('/user')
 };
 

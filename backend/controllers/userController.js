@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import { generateToken } from '../middleware/authMiddleware.js';
 import { ethers } from 'ethers';
+import okxService from '../services/okxService.js';
 
 // 验证签名
 const verifySignature = (message, signature, walletAddress) => {
@@ -29,7 +30,7 @@ const isValidTimestamp = (message) => {
 
 export const loginUser = async (req, res) => {
   try {
-    const { walletAddress, signature, message } = req.body;
+    const { walletAddress, signature, message, walletType = 'metamask' } = req.body;
     
     if (!walletAddress || !signature || !message) {
       return res.status(400).json({ error: '缺少必要的登录信息' });
@@ -45,8 +46,15 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ error: '登录请求已过期' });
     }
 
-    // 验证签名
-    if (!verifySignature(message, signature, walletAddress)) {
+    // 根据钱包类型验证签名
+    let isValidSignature = false;
+    if (walletType === 'okx') {
+      isValidSignature = await okxService.verifyWalletSignature(walletAddress, signature, message);
+    } else {
+      isValidSignature = verifySignature(message, signature, walletAddress);
+    }
+
+    if (!isValidSignature) {
       return res.status(400).json({ error: '签名验证失败' });
     }
 
