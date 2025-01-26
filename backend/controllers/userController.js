@@ -46,21 +46,31 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ error: '登录请求已过期' });
     }
 
+    // 验证钱包类型
+    if (!['metamask', 'okx'].includes(walletType)) {
+      console.warn(`不支持的钱包类型: ${walletType}`);
+      return res.status(400).json({ error: '不支持的钱包类型' });
+    }
+
     // 根据钱包类型验证签名
     let isValidSignature = false;
     try {
       if (walletType === 'okx') {
+        console.log(`开始验证OKX钱包签名 - 地址: ${walletAddress}`);
         isValidSignature = await okxService.verifyWalletSignature(walletAddress, signature, message);
         if (!isValidSignature) {
           console.warn(`OKX钱包签名验证失败 - 地址: ${walletAddress}`);
           return res.status(400).json({ error: 'OKX钱包签名验证失败' });
         }
+        console.log(`OKX钱包签名验证成功 - 地址: ${walletAddress}`);
       } else {
+        console.log(`开始验证MetaMask签名 - 地址: ${walletAddress}`);
         isValidSignature = verifySignature(message, signature, walletAddress);
         if (!isValidSignature) {
           console.warn(`MetaMask签名验证失败 - 地址: ${walletAddress}`);
           return res.status(400).json({ error: '签名验证失败' });
         }
+        console.log(`MetaMask签名验证成功 - 地址: ${walletAddress}`);
       }
     } catch (error) {
       console.error('签名验证过程出错:', error);
