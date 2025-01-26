@@ -29,19 +29,26 @@ export const analyzeHealthData = async (req, res) => {
       return res.status(500).json({ error: '读取文件失败: ' + error.message });
     }
 
+    // 检测文件内容类型并选择合适的分析提示词
+    let analysisType = 'text_health';
+    if (fileContent.includes('检验报告') || fileContent.includes('化验单') || 
+        fileContent.includes('医疗记录') || fileContent.includes('诊断报告')) {
+      analysisType = 'text_medical';
+    }
+
     // 使用DeepSeek进行文本分析
-    const deepseekResponse = await deepseekService.analyzeText(fileContent);
+    const deepseekResponse = await deepseekService.analyzeText(fileContent, analysisType);
     const parsedContent = JSON.parse(deepseekResponse.choices[0].message.content);
     
     // 转换为与现有格式兼容的结构
     const analysis = {
       summary: parsedContent.summary,
-      recommendations: parsedContent.recommendations.map(rec => rec.text),
-      riskFactors: parsedContent.risks.map(risk => risk.description),
+      recommendations: parsedContent.recommendations.map(rec => rec.text || rec),
+      riskFactors: parsedContent.risks.map(risk => risk.description || risk),
       metrics: {
-        healthScore: parsedContent.generalHealthScore,
-        stressLevel: 'medium',
-        sleepQuality: 'medium' // 默认值
+        healthScore: parsedContent.generalHealthScore || parsedContent.metrics?.healthScore || 75,
+        stressLevel: parsedContent.metrics?.stressLevel || 'medium',
+        sleepQuality: parsedContent.metrics?.sleepQuality || 'medium'
       }
     };
 
