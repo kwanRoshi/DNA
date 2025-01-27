@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+
+# Configuration
+app/config/config.py
+.env
+.env.*
+
+# Analysis results
+analysis_results.json
