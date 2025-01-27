@@ -1,12 +1,17 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import fs from 'fs';
+import dotenv from 'dotenv';
+import { DEEPSEEK_API_KEY } from '../config/config.js';
+
+// Load environment variables
+dotenv.config();
 
 class DeepseekService {
   constructor() {
     // DeepSeek API v3配置
     // API文档: https://api-docs.deepseek.com/zh-cn/
-    this.apiKey = process.env.DEEPSEEK_API_KEY;
+    this.apiKey = DEEPSEEK_API_KEY;
     if (!this.apiKey) {
       console.warn('[DeepSeek] API key not found in environment variables');
       throw new Error('DeepSeek API key is required');

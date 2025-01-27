@@ -1,102 +1,69 @@
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import LoginComponent from './components/LoginComponent';
-import DataFormComponent from './components/DataFormComponent';
-import AIResponseComponent from './components/AIResponseComponent';
-import ImageAnalysisComponent from './components/ImageAnalysisComponent';
-import ImageAnalysisHistory from './components/ImageAnalysisHistory';
-import ProtectedRoute from './utils/ProtectedRoute';
-import { StoreProvider, useStore, actions } from './utils/store.jsx';
-import { auth } from './services/api';
-import './App.css';
+import React, { useState } from 'react';
+import { ThemeProvider, CssBaseline, Container, Box } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
+import DataUploadComponent from './components/DataUploadComponent';
+import AnalysisResultComponent from './components/AnalysisResultComponent';
 
-const AppContent = () => {
-  const { state, dispatch } = useStore();
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const userData = await auth.getUserData();
-          dispatch(actions.login(
-            token,
-            localStorage.getItem('walletAddress'),
-            userData.user
-          ));
-        } catch (error) {
-          console.error('认证检查失败:', error);
-          dispatch(actions.logout());
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#2196f3',
+      light: '#64b5f6',
+      dark: '#1976d2'
+    },
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff'
+    }
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h5: {
+      fontWeight: 600
+    },
+    subtitle1: {
+      fontWeight: 500
+    }
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8
         }
       }
-    };
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12
+        }
+      }
+    }
+  }
+});
 
-    checkAuth();
-  }, [dispatch]);
+function App() {
+  const [analysisResult, setAnalysisResult] = useState(null);
 
-  const handleLogout = () => {
-    dispatch(actions.logout());
+  const handleAnalysisComplete = (result) => {
+    setAnalysisResult(result);
   };
 
   return (
-    <div className="app">
-      {state.isAuthenticated && (
-        <nav className="app-nav">
-          <div className="nav-content">
-            <span className="wallet-address">
-              钱包地址: {state.walletAddress}
-            </span>
-            <button onClick={handleLogout} className="logout-button">
-              退出登录
-            </button>
-          </div>
-        </nav>
-      )}
-
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            state.isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <LoginComponent />
-            )
-          } 
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute isAuthenticated={state.isAuthenticated}>
-              <div className="dashboard">
-                <div className="dashboard-grid">
-                  <div className="analysis-section">
-                    <DataFormComponent />
-                    <AIResponseComponent />
-                  </div>
-                  <div className="image-section">
-                    <ImageAnalysisComponent />
-                    <ImageAnalysisHistory />
-                  </div>
-                </div>
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Container maxWidth="lg">
+        <Box sx={{ py: 4 }}>
+          <DataUploadComponent onAnalysisComplete={handleAnalysisComplete} />
+          {analysisResult && (
+            <AnalysisResultComponent analysis={analysisResult.analysis} />
+          )}
+        </Box>
+      </Container>
+    </ThemeProvider>
   );
-};
-
-const App = () => {
-  return (
-    <StoreProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </StoreProvider>
-  );
-};
+}
 
 export default App;
