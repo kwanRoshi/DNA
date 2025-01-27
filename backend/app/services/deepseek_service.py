@@ -26,7 +26,7 @@ async def analyze_with_deepseek(sequence: str) -> dict:
     }
     
     data = {
-        "model": "deepseek-coder-33b-instruct",
+        "model": "deepseek-chat",  # Using DeepSeek chat model as specified
         "messages": [
             {
                 "role": "system",
@@ -65,7 +65,7 @@ async def analyze_with_deepseek(sequence: str) -> dict:
             logger.info("Successfully received response from DeepSeek API")
             return {
                 "analysis": result["choices"][0]["message"]["content"],
-                "model": "deepseek-coder-33b-instruct",
+                "model": "deepseek-chat",
                 "provider": "deepseek"
             }
             
@@ -86,4 +86,4 @@ async def analyze_with_deepseek(sequence: str) -> dict:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to analyze sequence: {str(e)}"
-        ) 
+        )         
