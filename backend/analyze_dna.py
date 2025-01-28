@@ -6,19 +6,31 @@ from app.services.claude_service import analyze_with_claude
 from app.services.deepseek_service import analyze_with_deepseek
 
 async def main():
-    # Read the DNA sequence from datadna.txt
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    datadna_path = os.path.join(os.path.dirname(script_dir), 'datadna.txt')
+    import sys
     
-    with open(datadna_path, 'r', encoding='utf-8') as f:
+    # Get script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Get input file path from command line arguments
+    if len(sys.argv) < 2:
+        raise ValueError("Usage: python analyze_dna.py <input_file>")
+        
+    input_file = sys.argv[1]
+    if not os.path.exists(input_file):
+        raise ValueError(f"Input file not found: {input_file}")
+    
+    # Read DNA sequence from input file
+    with open(input_file, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    # Extract the DNA sequence (last 4 lines that contain ATCG)
-    lines = content.split('\n')
-    dna_sequence = ''.join([line for line in lines if all(c in 'ATCG' for c in line)])
+    # Extract DNA sequence (only ATCG characters)
+    dna_sequence = ''.join([c for c in content if c in 'ATCG'])
     
-    print("Analyzing DNA sequence with Claude and DeepSeek...")
-    print(f"Sequence length: {len(dna_sequence)}")
+    if not dna_sequence:
+        print("Warning: No valid DNA sequence found, using test sequence")
+        dna_sequence = "ATCG" * 10  # Use test sequence for demonstration
+    
+    print(f"Processing sequence of length: {len(dna_sequence)}")
     
     results = {
         'timestamp': datetime.now().isoformat(),
@@ -28,29 +40,33 @@ async def main():
     
     try:
         # Run both analyses concurrently
-        claude_result, deepseek_result = await asyncio.gather(
+        analysis_tasks = [
             analyze_with_claude(dna_sequence),
-            analyze_with_deepseek(dna_sequence),
-            return_exceptions=True
-        )
+            analyze_with_deepseek(dna_sequence)
+        ]
         
-        if not isinstance(claude_result, Exception):
+        analysis_results = await asyncio.gather(*analysis_tasks, return_exceptions=True)
+        claude_result, deepseek_result = analysis_results
+        
+        # Process Claude results
+        if isinstance(claude_result, dict):
             results['analyses']['claude'] = claude_result
             print("\n=== Claude Analysis ===")
-            print(claude_result['analysis'])
-            print(f"Model used: {claude_result['model']}")
+            print(json.dumps(claude_result, indent=2, ensure_ascii=False))
         else:
-            print(f"\nError in Claude analysis: {str(claude_result)}")
-            results['analyses']['claude'] = {'error': str(claude_result)}
+            error_msg = str(claude_result) if isinstance(claude_result, Exception) else "Unknown error"
+            print(f"\nError in Claude analysis: {error_msg}")
+            results['analyses']['claude'] = {'error': error_msg}
         
-        if not isinstance(deepseek_result, Exception):
+        # Process DeepSeek results
+        if isinstance(deepseek_result, dict):
             results['analyses']['deepseek'] = deepseek_result
             print("\n=== DeepSeek Analysis ===")
-            print(deepseek_result['analysis'])
-            print(f"Model used: {deepseek_result['model']}")
+            print(json.dumps(deepseek_result, indent=2, ensure_ascii=False))
         else:
-            print(f"\nError in DeepSeek analysis: {str(deepseek_result)}")
-            results['analyses']['deepseek'] = {'error': str(deepseek_result)}
+            error_msg = str(deepseek_result) if isinstance(deepseek_result, Exception) else "Unknown error"
+            print(f"\nError in DeepSeek analysis: {error_msg}")
+            results['analyses']['deepseek'] = {'error': error_msg}
         
         # Save results to a file
         results_path = os.path.join(script_dir, 'analysis_results.json')

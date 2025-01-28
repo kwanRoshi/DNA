@@ -3,7 +3,7 @@ import logger from './logger.js';
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/dna_analysis';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dna_analysis';
     
     const options = {
       useNewUrlParser: true,

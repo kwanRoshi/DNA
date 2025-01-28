@@ -7,6 +7,8 @@ import morgan from 'morgan';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { router as analysisRouter } from './routes/analysis.js';
+import taskRouter from './routes/taskRoutes.js';
+import connectDB from './config/db.js';
 
 // Environment variables configuration
 dotenv.config();
@@ -29,6 +31,10 @@ app.use(morgan('dev'));
 
 // Routes
 app.use('/api/analysis', analysisRouter);
+app.use('/api/tasks', taskRouter);
+
+// Connect to MongoDB
+connectDB();
 
 // Health check endpoint
 app.get('/health', (req, res) => {

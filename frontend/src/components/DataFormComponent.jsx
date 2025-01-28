@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { healthData } from '../services/api';
+import { healthData, tasks } from '../services/api';
 import './DataFormComponent.css';
 
 const DataFormComponent = () => {
@@ -85,12 +85,14 @@ const DataFormComponent = () => {
         return;
       }
 
-      const response = await healthData.analyze(formData, {
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(progress);
-        }
-      });
+      // Create task first
+      const task = await tasks.create(formData);
+      
+      // Then analyze the data
+      const response = await healthData.analyze(task._id);
+      
+      // Update task with analysis result
+      await tasks.updateResult(task._id, response);
 
       setSuccess('数据分析成功');
       // 触发分析结果更新
