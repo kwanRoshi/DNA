@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { ThemeProvider, CssBaseline, Container, Box } from '@mui/material';
+import React from 'react';
+import { ThemeProvider, CssBaseline, Container, Box, Tab, Tabs } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
-import DataUploadComponent from './components/DataUploadComponent';
+import TaskSystemComponent from './components/TaskSystemComponent';
 import AnalysisResultComponent from './components/AnalysisResultComponent';
 
 const theme = createTheme({
@@ -45,10 +45,10 @@ const theme = createTheme({
 });
 
 function App() {
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [currentTab, setCurrentTab] = React.useState(0);
 
-  const handleAnalysisComplete = (result) => {
-    setAnalysisResult(result);
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
   };
 
   return (
@@ -56,10 +56,13 @@ function App() {
       <CssBaseline />
       <Container maxWidth="lg">
         <Box sx={{ py: 4 }}>
-          <DataUploadComponent onAnalysisComplete={handleAnalysisComplete} />
-          {analysisResult && (
-            <AnalysisResultComponent analysis={analysisResult.analysis} />
-          )}
+          <Tabs value={currentTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+            <Tab label="数据分析任务" />
+            <Tab label="分析历史" />
+          </Tabs>
+
+          {currentTab === 0 && <TaskSystemComponent />}
+          {currentTab === 1 && <AnalysisResultComponent />}
         </Box>
       </Container>
     </ThemeProvider>

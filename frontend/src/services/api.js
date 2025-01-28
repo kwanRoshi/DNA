@@ -95,13 +95,26 @@ export const imageAnalysis = {
   updateNote: (analysisId, note) => api.patch(`/image-analysis/${analysisId}/note`, { note })
 };
 
+// 任务管理API
+export const tasks = {
+  create: (formData) => api.post('/api/tasks', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    timeout: 30000
+  }),
+  getAll: () => api.get('/api/tasks'),
+  getById: (taskId) => api.get(`/api/tasks/${taskId}`),
+  updateResult: (taskId, result) => api.patch(`/api/tasks/${taskId}/result`, { analysisResult: result })
+};
+
 // 文件上传API
 export const upload = {
   uploadFile: (formData) => api.post('/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
-    timeout: 30000 // 上传文件给30秒超时
+    timeout: 30000
   })
 };
 
