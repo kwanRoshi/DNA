@@ -38,9 +38,3 @@ async def analyze_file(file: UploadFile = File(...)):
         }
     except Exception as e:
         return {"error": str(e)}
-
-def start():
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-if __name__ == "__main__":
-    start()
