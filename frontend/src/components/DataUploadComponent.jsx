@@ -53,17 +53,53 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
     formData.append('provider', provider);
 
     try {
-      const response = await fetch('http://localhost:3000/api/analysis/analyze', {
-        method: 'POST',
-        body: formData
+      const API_URL = import.meta.env.VITE_API_URL;
+      console.log('Sending request to:', `${API_URL}/analyze`);
+      console.log('FormData contents:', Object.fromEntries(formData.entries()));
+      
+      console.log('API URL:', API_URL);
+      console.log('Starting API request...');
+      const requestUrl = `${API_URL}/analyze`;
+      console.log('Request URL:', requestUrl);
+      console.log('Request headers:', {
+        'Accept': 'application/json'
       });
-
+      
+      try {
+        const response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+          },
+          body: formData,
+          mode: 'cors'
+        });
+        console.log('Response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+      
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to analyze sequence');
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to analyze sequence');
+        } catch (parseError) {
+          throw new Error(`Server error: ${responseText}`);
+        }
       }
+      
+      const result = JSON.parse(responseText);
 
-      const result = await response.json();
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        console.error('API Error:', result);
+        throw new Error(result.detail || 'Failed to analyze sequence');
+      }
       setSuccess('Analysis completed successfully');
       onAnalysisComplete(result);
       setSequence('');
@@ -174,4 +210,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent; 
+export default DataUploadComponent;            
