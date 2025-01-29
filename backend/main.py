@@ -1,4 +1,3 @@
-import uvicorn
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,11 +12,11 @@ app.add_middleware(
 )
 
 @app.get("/")
-def root():
+async def root():
     return {"message": "DNA Analysis API"}
 
 @app.get("/api/health")
-def health_check():
+async def health_check():
     return {"status": "healthy"}
 
 @app.post("/api/analyze")
@@ -39,6 +38,3 @@ async def analyze_file(file: UploadFile = File(...)):
         }
     except Exception as e:
         return {"error": str(e)}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
