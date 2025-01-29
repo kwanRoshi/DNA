@@ -1,16 +1,9 @@
 import fs from 'fs/promises';
-import { analyzeHealthData, getAnalysisHistory } from '../controllers/aiController.js';
-import User from '../models/User.js';
+import { analyzeHealthData } from '../controllers/aiController.js';
 import deepseekService from '../services/deepseekService.js';
 
 // Mock fs/promises
 jest.mock('fs/promises');
-
-// Mock User model
-jest.mock('../models/User.js', () => ({
-  findOne: jest.fn(),
-  findOneAndUpdate: jest.fn()
-}));
 
 // Mock deepseekService
 const mockAnalyzeText = jest.fn();
@@ -31,9 +24,6 @@ describe('AI Controller', () => {
         path: '/test/path',
         mimetype: 'text/csv',
         size: 1024
-      },
-      user: {
-        walletAddress: '0x123'
       }
     };
 
@@ -72,13 +62,11 @@ describe('AI Controller', () => {
 
       fs.readFile.mockResolvedValue(fileContent);
       mockAnalyzeText.mockResolvedValue(mockDeepseekResponse);
-      User.findOneAndUpdate.mockResolvedValue({});
 
       await analyzeHealthData(mockReq, mockRes);
 
       expect(fs.readFile).toHaveBeenCalledWith('/test/path', 'utf-8');
-      expect(mockAnalyzeText).toHaveBeenCalledWith(fileContent);
-      expect(User.findOneAndUpdate).toHaveBeenCalled();
+      expect(mockAnalyzeText).toHaveBeenCalledWith(fileContent, 'text_health');
       expect(mockRes.json).toHaveBeenCalledWith({
         analysis: {
           summary: JSON.parse(mockDeepseekResponse.choices[0].message.content).summary,
@@ -141,7 +129,6 @@ describe('AI Controller', () => {
 
     it('应该清理上传的文件', async () => {
       fs.readFile.mockResolvedValue('test data');
-      User.findOneAndUpdate.mockResolvedValue({});
 
       await analyzeHealthData(mockReq, mockRes);
 
@@ -149,51 +136,5 @@ describe('AI Controller', () => {
     });
   });
 
-  describe('getAnalysisHistory', () => {
-    it('应该返回用户的分析历史', async () => {
-      const mockHistory = [
-        {
-          timestamp: new Date(),
-          analysis: {
-            summary: '测试摘要',
-            recommendations: ['建议1'],
-            riskFactors: ['风险1'],
-            metrics: { score: 85 }
-          }
-        }
-      ];
 
-      User.findOne.mockResolvedValue({
-        walletAddress: '0x123',
-        analysisHistory: mockHistory
-      });
-
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(User.findOne).toHaveBeenCalledWith({ walletAddress: '0x123' });
-      expect(mockRes.json).toHaveBeenCalledWith({ history: mockHistory });
-    });
-
-    it('应该处理用户未找到的情况', async () => {
-      User.findOne.mockResolvedValue(null);
-
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: '用户未找到'
-      });
-    });
-
-    it('应该处理数据库错误', async () => {
-      User.findOne.mockRejectedValue(new Error('Database error'));
-
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: expect.any(String)
-      });
-    });
-  });
 });

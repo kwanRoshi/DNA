@@ -1,5 +1,4 @@
 import fs from 'fs/promises';
-import User from '../models/User.js';
 import deepseekService from '../services/deepseekService.js';
 
 const SUPPORTED_MIME_TYPES = [
@@ -11,7 +10,6 @@ const SUPPORTED_MIME_TYPES = [
 
 export const analyzeHealthData = async (req, res) => {
   const file = req.file;
-  const userId = req.user?.walletAddress;
 
   if (!file) {
     return res.status(500).json({ error: '未提供文件' });
@@ -38,40 +36,22 @@ export const analyzeHealthData = async (req, res) => {
 
     // 使用DeepSeek进行文本分析
     const deepseekResponse = await deepseekService.analyzeText(fileContent, analysisType);
-    const parsedContent = JSON.parse(deepseekResponse.choices[0].message.content);
+    const content = JSON.parse(deepseekResponse.choices[0].message.content);
     
-    // 转换为与现有格式兼容的结构
     const analysis = {
-      summary: parsedContent.summary,
-      recommendations: parsedContent.recommendations.map(rec => rec.text || rec),
-      riskFactors: parsedContent.risks.map(risk => risk.description || risk),
+      summary: content.summary,
+      recommendations: content.recommendations.map(rec => typeof rec === 'string' ? rec : rec.text),
+      riskFactors: content.risks.map(risk => typeof risk === 'string' ? risk : risk.description),
       metrics: {
-        healthScore: parsedContent.generalHealthScore || parsedContent.metrics?.healthScore || 75,
-        stressLevel: parsedContent.metrics?.stressLevel || 'medium',
-        sleepQuality: parsedContent.metrics?.sleepQuality || 'medium'
+        healthScore: content.generalHealthScore,
+        stressLevel: content.metrics?.stressLevel || 'medium',
+        sleepQuality: content.metrics?.sleepQuality || 'medium'
       }
     };
 
-    // 保存分析结果到用户记录
-    if (userId) {
-      await User.findOneAndUpdate(
-        { walletAddress: userId },
-        { 
-          $push: { 
-            analysisHistory: {
-              timestamp: new Date(),
-              analysis,
-              originalContent: fileContent
-            }
-          }
-        },
-        { new: true }
-      );
-    }
-
     res.json({ analysis });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || '数据库错误' });
   } finally {
     // 清理上传的文件
     if (file && file.path) {
@@ -81,18 +61,5 @@ export const analyzeHealthData = async (req, res) => {
         console.error('清理文件失败:', err);
       }
     }
-  }
-};
-
-export const getAnalysisHistory = async (req, res) => {
-  try {
-    const user = await User.findOne({ walletAddress: req.user.walletAddress });
-    if (!user) {
-      return res.status(404).json({ error: '用户未找到' });
-    }
-
-    res.json({ history: user.analysisHistory || [] });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 };

@@ -1,10 +1,10 @@
 import fs from 'fs/promises';
-import User from '../../models/User.js';
-import { analyzeHealthData, getAnalysisHistory } from '../../controllers/aiController.js';
+import { analyzeHealthData } from '../../controllers/aiController.js';
+import deepseekService from '../../services/deepseekService.js';
 
-// 模拟依赖
+// Mock dependencies
 jest.mock('fs/promises');
-jest.mock('../../models/User.js');
+jest.mock('../../services/deepseekService.js');
 
 describe('AI Controller', () => {
   let mockReq;
@@ -36,15 +36,40 @@ describe('AI Controller', () => {
     fs.readFile.mockResolvedValue('test file content');
     fs.unlink.mockResolvedValue();
 
-    // 模拟数据库操作
-    User.findOneAndUpdate.mockResolvedValue({
-      walletAddress: '0x123456789',
-      analysisHistory: []
+    // 模拟 DeepSeek API 响应
+    deepseekService.analyzeText.mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: '健康状况良好',
+            recommendations: ['保持运动', '均衡饮食'],
+            risks: ['缺乏运动'],
+            generalHealthScore: 85,
+            metrics: {
+              stressLevel: 'low',
+              sleepQuality: 'good'
+            }
+          })
+        }
+      }]
     });
 
-    User.findOne.mockResolvedValue({
-      walletAddress: '0x123456789',
-      analysisHistory: []
+    // 模拟 DeepSeek API 响应
+    deepseekService.analyzeText.mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: '健康状况良好',
+            recommendations: ['保持运动', '均衡饮食'],
+            risks: ['缺乏运动'],
+            generalHealthScore: 85,
+            metrics: {
+              stressLevel: 'low',
+              sleepQuality: 'good'
+            }
+          })
+        }
+      }]
     });
   });
 
@@ -57,7 +82,7 @@ describe('AI Controller', () => {
       await analyzeHealthData(mockReq, mockRes);
 
       expect(fs.readFile).toHaveBeenCalledWith('test/path', 'utf-8');
-      expect(User.findOneAndUpdate).toHaveBeenCalled();
+      expect(deepseekService.analyzeText).toHaveBeenCalled();
       expect(fs.unlink).toHaveBeenCalledWith('test/path');
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -101,15 +126,7 @@ describe('AI Controller', () => {
       });
     });
 
-    test('数据库更新失败返回错误', async () => {
-      User.findOneAndUpdate.mockRejectedValue(new Error('数据库错误'));
-      await analyzeHealthData(mockReq, mockRes);
 
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: '数据库错误'
-      });
-    });
 
     test('文件清理失败时记录错误但不影响响应', async () => {
       fs.unlink.mockRejectedValue(new Error('清理失败'));
@@ -136,79 +153,8 @@ describe('AI Controller', () => {
       );
     });
 
-    test('未登录用户也能获取分析结果', async () => {
-      mockReq.user = null;
-      await analyzeHealthData(mockReq, mockRes);
 
-      expect(User.findOneAndUpdate).not.toHaveBeenCalled();
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          analysis: expect.any(Object)
-        })
-      );
-    });
   });
 
-  describe('getAnalysisHistory', () => {
-    test('成功获取分析历史', async () => {
-      const mockHistory = [
-        {
-          timestamp: new Date(),
-          analysis: {
-            summary: '测试分析',
-            recommendations: ['建议1', '建议2'],
-            riskFactors: ['风险1'],
-            metrics: { healthScore: 90 }
-          }
-        }
-      ];
 
-      User.findOne.mockResolvedValue({
-        walletAddress: '0x123456789',
-        analysisHistory: mockHistory
-      });
-
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(User.findOne).toHaveBeenCalledWith({
-        walletAddress: '0x123456789'
-      });
-      expect(mockRes.json).toHaveBeenCalledWith({
-        history: mockHistory
-      });
-    });
-
-    test('用户不存在时返回404', async () => {
-      User.findOne.mockResolvedValue(null);
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: '用户未找到'
-      });
-    });
-
-    test('数据库查询失败时返回500', async () => {
-      User.findOne.mockRejectedValue(new Error('数据库错误'));
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: '数据库错误'
-      });
-    });
-
-    test('用户没有分析历史时返回空数组', async () => {
-      User.findOne.mockResolvedValue({
-        walletAddress: '0x123456789',
-        analysisHistory: null
-      });
-
-      await getAnalysisHistory(mockReq, mockRes);
-
-      expect(mockRes.json).toHaveBeenCalledWith({
-        history: []
-      });
-    });
-  });
 });
