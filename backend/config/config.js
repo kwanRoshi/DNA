@@ -4,11 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // API Keys
-export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-if (!DEEPSEEK_API_KEY) {
-    throw new Error("DEEPSEEK_API_KEY environment variable is not set");
-}
+export const DEEPSEEK_API_KEY = "sk-4ff47d34c52948edab6c9d0e7745b75b";
 
-// Database Configuration
-export const MONGODB_URL = process.env.MONGODB_URL || 'mongodb://mongodb:27017';
-export const DATABASE_NAME = process.env.DATABASE_NAME || 'dna_analysis'; 
+// File Upload Configuration
+export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const ALLOWED_FILE_TYPES = ['text/plain', 'text/csv', 'application/json', 'application/vnd.ms-excel', 'image/jpeg', 'image/png', 'image/gif']; 

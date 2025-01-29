@@ -49,7 +49,6 @@ const analyzeWithDeepseek = async (sequence) => {
 router.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     let sequence = req.body.sequence;
-    const provider = req.body.provider || 'claude';
     
     if (req.file) {
       const fileContent = await fs.promises.readFile(req.file.path, 'utf8');
@@ -60,24 +59,9 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No sequence provided' });
     }
 
-    console.log(`Analyzing sequence with ${provider}...`);
-    let result;
-    
-    if (provider === 'deepseek') {
-      result = await analyzeWithDeepseek(sequence);
-    } else {
-      result = await analyzeWithClaude(sequence);
-    }
+    console.log('Analyzing sequence with DeepSeek...');
+    const result = await analyzeWithDeepseek(sequence);
 
-    // Save analysis to database
-    const analysis = {
-      sequence: sequence,
-      result: result,
-      timestamp: new Date()
-    };
-
-    await db.collection('analyses').insertOne(analysis);
-    
     res.json(result);
   } catch (error) {
     console.error('Error analyzing sequence:', error);
@@ -89,4 +73,4 @@ router.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-export { router }; 
+export { router };    
