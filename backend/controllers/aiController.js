@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import deepseekService from '../services/deepseekService.js';
+import DeepseekService from '../services/deepseekService.js';
 
 const SUPPORTED_MIME_TYPES = [
   'text/plain',
@@ -9,6 +9,7 @@ const SUPPORTED_MIME_TYPES = [
 ];
 
 export const analyzeHealthData = async (req, res) => {
+  const deepseekService = new DeepseekService();
   const file = req.file;
 
   if (!file) {

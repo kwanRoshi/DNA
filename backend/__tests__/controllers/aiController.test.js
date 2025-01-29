@@ -1,15 +1,52 @@
 import fs from 'fs/promises';
 import { analyzeHealthData } from '../../controllers/aiController.js';
-import deepseekService from '../../services/deepseekService.js';
+import DeepseekService from '../../services/deepseekService.js';
 
 // Mock dependencies
 jest.mock('fs/promises');
-jest.mock('../../services/deepseekService.js');
+jest.mock('../../services/deepseekService.js', () => {
+  return jest.fn().mockImplementation(() => ({
+    analyzeText: jest.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: "Mock analysis of health data",
+            recommendations: ["Maintain healthy diet", "Exercise regularly"],
+            risks: ["No significant health risks detected"],
+            generalHealthScore: 85,
+            metrics: {
+              stressLevel: "low",
+              sleepQuality: "good"
+            }
+          })
+        }
+      }]
+    })
+  }));
+});
 
 describe('AI Controller', () => {
   let mockReq;
   let mockRes;
   const consoleSpy = jest.spyOn(console, 'error');
+  const mockDeepseekInstance = {
+    analyzeText: jest.fn().mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            summary: "Mock analysis of health data",
+            recommendations: ["Maintain healthy diet", "Exercise regularly"],
+            risks: ["No significant health risks detected"],
+            generalHealthScore: 85,
+            metrics: {
+              stressLevel: "low",
+              sleepQuality: "good"
+            }
+          })
+        }
+      }]
+    })
+  };
 
   beforeEach(() => {
     // 重置所有模拟
@@ -32,45 +69,10 @@ describe('AI Controller', () => {
       json: jest.fn()
     };
 
-    // 模拟文件操作
+    // Initialize services and mocks
     fs.readFile.mockResolvedValue('test file content');
     fs.unlink.mockResolvedValue();
-
-    // 模拟 DeepSeek API 响应
-    deepseekService.analyzeText.mockResolvedValue({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            summary: '健康状况良好',
-            recommendations: ['保持运动', '均衡饮食'],
-            risks: ['缺乏运动'],
-            generalHealthScore: 85,
-            metrics: {
-              stressLevel: 'low',
-              sleepQuality: 'good'
-            }
-          })
-        }
-      }]
-    });
-
-    // 模拟 DeepSeek API 响应
-    deepseekService.analyzeText.mockResolvedValue({
-      choices: [{
-        message: {
-          content: JSON.stringify({
-            summary: '健康状况良好',
-            recommendations: ['保持运动', '均衡饮食'],
-            risks: ['缺乏运动'],
-            generalHealthScore: 85,
-            metrics: {
-              stressLevel: 'low',
-              sleepQuality: 'good'
-            }
-          })
-        }
-      }]
-    });
+    DeepseekService.mockImplementation(() => mockDeepseekInstance);
   });
 
   afterEach(() => {
@@ -82,7 +84,7 @@ describe('AI Controller', () => {
       await analyzeHealthData(mockReq, mockRes);
 
       expect(fs.readFile).toHaveBeenCalledWith('test/path', 'utf-8');
-      expect(deepseekService.analyzeText).toHaveBeenCalled();
+      expect(mockDeepseekInstance.analyzeText).toHaveBeenCalled();
       expect(fs.unlink).toHaveBeenCalledWith('test/path');
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -1,7 +1,8 @@
-import deepseekService from '../services/deepseekService.js';
 import fs from 'fs/promises';
+import DeepseekService from '../services/deepseekService.js';
 
 export const analyzeImage = async (req, res) => {
+  const deepseekService = new DeepseekService();
   const file = req.file;
   const analysisType = req.body.analysisType || 'general';
 
