@@ -54,58 +54,41 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
 
     try {
       const API_URL = import.meta.env.VITE_API_URL;
-      console.log('Sending request to:', `${API_URL}/analyze`);
-      console.log('FormData contents:', Object.fromEntries(formData.entries()));
-      
-      console.log('API URL:', API_URL);
-      console.log('Starting API request...');
       const requestUrl = `${API_URL}/analyze`;
+      console.log('API URL:', API_URL);
       console.log('Request URL:', requestUrl);
-      console.log('Request headers:', {
-        'Accept': 'application/json'
+      console.log('FormData contents:', Object.fromEntries(formData.entries()));
+
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
+        body: formData,
+        mode: 'cors'
       });
-      
-      try {
-        const response = await fetch(requestUrl, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-          },
-          body: formData,
-          mode: 'cors'
-        });
-        console.log('Response received:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-      
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      console.log('Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       const responseText = await response.text();
       console.log('Raw response:', responseText);
-      
-      if (!response.ok) {
-        try {
-          const errorData = JSON.parse(responseText);
-          throw new Error(errorData.error || 'Failed to analyze sequence');
-        } catch (parseError) {
-          throw new Error(`Server error: ${responseText}`);
-        }
-      }
-      
-      const result = JSON.parse(responseText);
 
-      console.log('Response status:', response.status);
+      const result = JSON.parse(responseText);
       if (!response.ok) {
-        console.error('API Error:', result);
-        throw new Error(result.detail || 'Failed to analyze sequence');
+        throw new Error(result.error || result.detail || 'Failed to analyze sequence');
       }
+
       setSuccess('Analysis completed successfully');
       onAnalysisComplete(result);
       setSequence('');
       setFile(null);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error('API Error:', error);
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -172,6 +155,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           placeholder="Paste your sequence here..."
           variant="outlined"
           fullWidth
+          inputProps={{ 'devinid': 'sequence-input' }}
         />
 
         {error && (
@@ -198,6 +182,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
               backgroundColor: 'primary.dark',
             }
           }}
+          devinid="analyze-button"
         >
           {isLoading ? (
             <CircularProgress size={24} color="inherit" />
@@ -210,4 +195,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;            
+export default DataUploadComponent;                  
