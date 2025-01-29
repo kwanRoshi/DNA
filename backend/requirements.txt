@@ -1,1 +1,0 @@
-fastapi==0.104.1\nuvicorn[standard]==0.24.0\npython-multipart==0.0.6\npython-dotenv==1.0.0\nrequests==2.31.0
