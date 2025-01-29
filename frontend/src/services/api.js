@@ -1,15 +1,13 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
-// 创建axios实例
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 15000, // 15秒超时
-  withCredentials: true
+  timeout: 15000
 });
 
 // 重试配置
