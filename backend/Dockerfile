@@ -1,23 +1,12 @@
-# 使用Node.js官方镜像作为基础镜像
-FROM node:18-alpine
+FROM python:3.12-slim
 
-# 设置工作目录
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# 复制package.json和package-lock.json
-COPY package*.json ./
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 安装依赖
-RUN npm install
-
-# 复制源代码
 COPY . .
 
-# 创建上传目录
-RUN mkdir -p uploads && chmod 777 uploads
+ENV PORT=8000
 
-# 暴露端口
-EXPOSE 3000
-
-# 启动命令
-CMD ["npm", "run", "dev"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
