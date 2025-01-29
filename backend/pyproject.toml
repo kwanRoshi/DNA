@@ -3,6 +3,7 @@ name = "dna-backend"
 version = "0.1.0"
 description = "DNA Analysis Backend"
 authors = ["Devin <devin@example.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.8"
