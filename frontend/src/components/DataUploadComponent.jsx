@@ -106,28 +106,20 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           throw new Error('Missing analysis data in response');
         }
 
-        // Extract sections from summary if they exist
         const summaryText = analysis.summary || '';
-        let recommendations = analysis.recommendations || [];
-        let riskFactors = analysis.riskFactors || [];
-        let metrics = analysis.metrics || {};
-
-        // Parse sections from summary if they're embedded
-        if (summaryText.includes('### Recommendations')) {
-          const recommendationsSection = summaryText.split('### Recommendations')[1].split('###')[0];
-          recommendations = recommendationsSection.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim().substring(2));
-        }
-        
-        if (summaryText.includes('### Risk Factors')) {
-          const riskFactorsSection = summaryText.split('### Risk Factors')[1].split('###')[0];
-          riskFactors = riskFactorsSection.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim().substring(2));
-        }
+        const recommendations = analysis.recommendations || [];
+        const riskFactors = analysis.riskFactors || [];
+        const metrics = analysis.metrics || {};
 
         const formattedAnalysis = {
           summary: summaryText,
-          recommendations,
-          riskFactors,
-          metrics
+          recommendations: recommendations.length > 0 ? recommendations : summaryText.split('\n').filter(line => line.includes('建议') || line.includes('推荐')),
+          riskFactors: riskFactors.length > 0 ? riskFactors : summaryText.split('\n').filter(line => line.includes('风险') || line.includes('警告')),
+          metrics: {
+            healthScore: metrics.healthScore || parseFloat(summaryText.match(/健康评分[：:]\s*(\d+)/)?.[1]),
+            stressLevel: metrics.stressLevel || parseFloat(summaryText.match(/压力水平[：:]\s*(\d+)/)?.[1]),
+            sleepQuality: metrics.sleepQuality || parseFloat(summaryText.match(/睡眠质量[：:]\s*(\d+)/)?.[1])
+          }
         };
 
         const isRealAnalysis = summaryText && !summaryText.includes('Test analysis result');
@@ -257,4 +249,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;                                        
+export default DataUploadComponent;                                          
