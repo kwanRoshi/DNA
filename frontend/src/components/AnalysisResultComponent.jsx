@@ -41,19 +41,35 @@ const AnalysisResultComponent = ({ analysis }) => {
       content: analysis.summary || 'No summary available'
     },
     {
-      title: 'Health Implications',
-      icon: <HealthAndSafetyIcon />,
-      content: analysis.implications || 'No health implications available'
+      title: 'Risk Factors',
+      icon: <WarningIcon />,
+      content: Array.isArray(analysis.riskFactors) && analysis.riskFactors.length > 0
+        ? analysis.riskFactors.map((risk, i) => `${i + 1}. ${risk}`).join('\n')
+        : analysis.summary?.includes('Risk Factors:')
+          ? analysis.summary.split('Risk Factors:')[1].split('Recommendations:')[0].trim()
+          : 'No risk factors identified'
     },
     {
       title: 'Recommendations',
       icon: <RecommendIcon />,
-      content: analysis.recommendations || 'No recommendations available'
+      content: Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0
+        ? analysis.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')
+        : analysis.summary?.includes('Recommendations:')
+          ? analysis.summary.split('Recommendations:')[1].trim()
+          : 'No recommendations available'
     },
     {
-      title: 'Risk Factors',
-      icon: <WarningIcon />,
-      content: analysis.risks || 'No risk factors identified'
+      title: 'Health Metrics',
+      icon: <HealthAndSafetyIcon />,
+      content: analysis.metrics && Object.values(analysis.metrics).some(v => v !== null)
+        ? [
+            `Health Score: ${analysis.metrics.healthScore || 'N/A'}`,
+            `Stress Level: ${analysis.metrics.stressLevel || 'N/A'}`,
+            `Sleep Quality: ${analysis.metrics.sleepQuality || 'N/A'}`
+          ].join('\n')
+        : analysis.summary?.includes('生理指标:')
+          ? analysis.summary.split('生理指标:')[1].split('---')[0].trim()
+          : 'No health metrics available'
     }
   ];
 
@@ -130,4 +146,4 @@ const AnalysisResultComponent = ({ analysis }) => {
   );
 };
 
-export default AnalysisResultComponent; 
+export default AnalysisResultComponent;    

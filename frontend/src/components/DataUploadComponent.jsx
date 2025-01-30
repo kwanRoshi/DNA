@@ -43,26 +43,36 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
     setIsLoading(true);
     setError(null);
 
-    const formData = new FormData();
+    let sequenceData = sequence;
+    
     if (file) {
-      formData.append('file', file);
+      const text = await file.text();
+      sequenceData = text;
     }
-    if (sequence) {
-      formData.append('sequence', sequence);
+
+    if (!sequenceData) {
+      setError('Please provide sequence data or upload a file');
+      setIsLoading(false);
+      return;
     }
-    formData.append('provider', provider);
+
+    const requestData = {
+      sequence: sequenceData,
+      provider: provider
+    };
 
     try {
       const API_URL = import.meta.env.VITE_API_URL;
-      const requestUrl = `${API_URL}/analyze`;
+      const requestUrl = `${API_URL}/api/analyze`;
       console.log('API URL:', API_URL);
       console.log('Request URL:', requestUrl);
-      console.log('FormData contents:', Object.fromEntries(formData.entries()));
+      console.log('Request data:', requestData);
 
       const response = await fetch(requestUrl, {
         method: 'POST',
-        body: formData,
+        body: JSON.stringify(requestData),
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
@@ -178,7 +188,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           placeholder="Paste your sequence here..."
           variant="outlined"
           fullWidth
-          inputProps={{ 'devinid': 'sequence-input' }}
+          inputProps={{ 'data-devinid': 'sequence-input' }}
         />
 
         {error && (
@@ -205,7 +215,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
               backgroundColor: 'primary.dark',
             }
           }}
-          devinid="analyze-button"
+          data-devinid="analyze-button"
         >
           {isLoading ? (
             <CircularProgress size={24} color="inherit" />
@@ -218,4 +228,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;                              
+export default DataUploadComponent;                                    

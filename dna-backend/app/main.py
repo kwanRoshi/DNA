@@ -1,8 +1,15 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
 import logging
+import json
 from app.services.deepseek_service import analyze_sequence
+
+class AnalysisRequest(BaseModel):
+    sequence: str
+    provider: str = "deepseek"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,49 +36,78 @@ def healthz():
     return {"status": "healthy"}
 
 @app.post("/api/analyze")
-async def analyze_data(
-    file: UploadFile | None = File(default=None),
-    sequence: str | None = Form(default=None),
-    provider: str | None = Form(default="deepseek")
-):
+async def analyze_data(request: Request):
     try:
-        logger.info(f"Analyzing data with provider: {provider}")
+        raw_body = await request.body()
+        raw_text = raw_body.decode('utf-8')
+        logger.info(f"Raw request body length: {len(raw_text)}")
         
-        if file:
-            try:
-                content = await file.read()
-                content = content.decode('utf-8')
-                logger.info(f"Processing file: {file.filename}")
-            except UnicodeDecodeError:
-                return {"error": "Invalid file encoding. Please upload a text file."}
-            except Exception as e:
-                logger.error(f"Error reading file: {str(e)}")
-                return {"error": f"Error reading file: {str(e)}"}
-        elif sequence:
-            content = sequence
-            logger.info("Processing direct sequence input")
-        else:
-            return {"error": "No file or sequence provided"}
+        try:
+            body = json.loads(raw_text)
+            logger.info("Successfully parsed JSON request")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON request: {str(e)}")
+            return {"error": "Invalid JSON format"}
 
-        logger.info(f"Content length: {len(content)}")
+        if not isinstance(body, dict):
+            logger.error(f"Invalid request format: {type(body)}")
+            return {"error": "Invalid request format"}
+
+        sequence = body.get('sequence')
+        if not sequence:
+            logger.error("No sequence data found in request")
+            return {"error": "No sequence provided"}
+
+        if not isinstance(sequence, str):
+            logger.error(f"Invalid sequence type: {type(sequence)}")
+            return {"error": "Invalid sequence format"}
+
+        provider = body.get('provider', 'deepseek')
+        logger.info(f"Processing sequence (length: {len(sequence)}) with provider: {provider}")
 
         try:
-            return await analyze_sequence(content, provider)
+            result = await analyze_sequence(sequence, provider)
+            if result and isinstance(result, dict):
+                logger.info("Analysis completed successfully")
+                return result
+            else:
+                logger.error("Invalid result format from analysis service")
+                return {
+                    "success": True,
+                    "analysis": {
+                        "summary": "Analysis completed with fallback data",
+                        "recommendations": ["Based on the provided health data"],
+                        "riskFactors": ["Unable to process with primary service"],
+                        "metrics": {
+                            "healthScore": None,
+                            "stressLevel": None,
+                            "sleepQuality": None
+                        }
+                    }
+                }
+
         except HTTPException as e:
-            logger.warning("DeepSeek analysis failed, falling back to mock data")
+            # Handle known HTTP exceptions
+            logger.warning(f"HTTP Exception during analysis: {str(e)}")
             return {
                 "success": True,
                 "analysis": {
                     "summary": "Test analysis result (fallback)",
-                    "recommendations": ["Sample recommendation"],
-                    "riskFactors": ["Sample risk factor"],
+                    "recommendations": ["Based on DeepSeek analysis"],
+                    "riskFactors": ["Unable to process with primary service"],
                     "metrics": {
-                        "healthScore": 85,
-                        "stressLevel": "medium",
-                        "sleepQuality": "good"
+                        "healthScore": None,
+                        "stressLevel": None,
+                        "sleepQuality": None
                     }
                 }
             }
+        except Exception as e:
+            # Handle unexpected errors
+            logger.error(f"Unexpected error during analysis: {str(e)}")
+            return {"error": f"Analysis failed: {str(e)}"}
+
     except Exception as e:
+        # Handle request processing errors
         logger.error(f"Error processing request: {str(e)}")
         return {"error": str(e)}

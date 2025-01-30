@@ -76,11 +76,19 @@ export const auth = {
 
 // 健康数据分析API
 export const healthData = {
-  analyze: (formData) => api.post('/analyze', formData, {
+  analyze: (formData) => api.post('/api/analyze', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     },
-    timeout: 30000 // 上传文件给30秒超时
+    timeout: 30000,
+    transformResponse: [(data) => {
+      const response = JSON.parse(data);
+      if (!response.success) {
+        throw new Error(response.error || 'Analysis failed');
+      }
+      return response;
+    }]
   }),
   getHistory: () => api.get('/analysis-history')
 };

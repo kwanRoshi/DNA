@@ -19,21 +19,38 @@ if not DEEPSEEK_API_KEY:
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 
 async def analyze_sequence(sequence: str, provider: str = "deepseek") -> dict:
-    if not sequence:
-        raise HTTPException(
-            status_code=400,
-            detail="Sequence cannot be empty"
-        )
-    
-    if provider == "claude":
-        return await analyze_with_claude(sequence)
-    elif provider == "deepseek":
-        return await analyze_with_deepseek(sequence)
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported provider: {provider}"
-        )
+    try:
+        logger.info(f"Starting analysis with provider: {provider}")
+        logger.info(f"Sequence length: {len(sequence)}")
+        
+        if not sequence:
+            logger.error("Empty sequence provided")
+            raise HTTPException(
+                status_code=400,
+                detail="Sequence cannot be empty"
+            )
+        
+        if provider == "claude":
+            logger.info("Using Claude provider")
+            return await analyze_with_claude(sequence)
+        elif provider == "deepseek":
+            logger.info("Using DeepSeek provider")
+            return await analyze_with_deepseek(sequence)
+        else:
+            logger.error(f"Unsupported provider: {provider}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported provider: {provider}"
+            )
+    except HTTPException as e:
+        logger.error(f"HTTP Exception in analyze_sequence: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in analyze_sequence: {str(e)}")
+        return {
+            "success": False,
+            "error": f"Failed to analyze sequence: {str(e)}"
+        }
 
 async def analyze_with_claude(sequence: str) -> dict:
     if not CLAUDE_API_KEY:
@@ -95,18 +112,21 @@ async def analyze_with_claude(sequence: str) -> dict:
 
 async def analyze_with_deepseek(sequence: str) -> dict:
     if not DEEPSEEK_API_KEY:
+        logger.error("DeepSeek API key not found")
         raise HTTPException(
             status_code=500,
             detail="DeepSeek API key is not configured"
         )
 
+    logger.info("Initializing DeepSeek API request")
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
     }
+    logger.info("API key configured successfully")
     
     data = {
-        "model": "DeepSeek-V3",
+        "model": "deepseek-chat",
         "messages": [
             {
                 "role": "system",
