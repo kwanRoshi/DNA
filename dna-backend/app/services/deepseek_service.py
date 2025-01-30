@@ -4,6 +4,7 @@ from fastapi import HTTPException
 import os
 from dotenv import load_dotenv
 import json
+from .mock_deepseek_service import mock_analyze_sequence, MOCK_RESPONSES
 
 load_dotenv()
 
@@ -26,6 +27,10 @@ async def analyze_sequence(
     include_risk_factors: bool = True,
     include_metrics: bool = True
 ) -> dict:
+    if os.getenv("MOCK_DEEPSEEK_API"):
+        if not sequence:
+            raise HTTPException(status_code=400, detail="No sequence provided")
+        return await mock_analyze_sequence(sequence, analysis_type)
     try:
         logger.info(f"Starting analysis with provider: {provider}")
         logger.info(f"Sequence length: {len(sequence)}")
@@ -277,7 +282,7 @@ async def analyze_with_deepseek(
                     "analysis": {
                         "summary": summary or analysis_text,
                         "recommendations": recommendations or [{"suggestion": "请提供更详细的健康数据以获取具体建议", "priority": "medium", "category": "医疗"}],
-                        "riskFactors": risk_factors or [{"description": "无法从提供的数据中确定风险因素", "severity": "low", "type": "未分类"}],
+                        "risk_factors": risk_factors or [{"description": "无法从提供的数据中确定风险因素", "severity": "low", "type": "未分类"}],
                         "metrics": metrics,
                         "analysisType": analysis_type
                     }

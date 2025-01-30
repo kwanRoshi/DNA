@@ -1,10 +1,13 @@
 from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
 import logging
 import json
+from datetime import datetime
+import uuid
 from app.services.deepseek_service import analyze_sequence
 
 class AnalysisRequest(BaseModel):
@@ -33,6 +36,13 @@ load_dotenv()
 
 app = FastAPI()
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail}
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,11 +64,38 @@ def healthz():
 async def manage_health_records(request: HealthRecordRequest):
     try:
         logger.info(f"[HEALTH_RECORD] Processing {request.record_type} record")
+        analysis_result = {
+            "summary": "可能存在工作压力导致的身心症状",
+            "recommendations": [
+                {"suggestion": "调整作息时间", "priority": "high", "category": "lifestyle"},
+                {"suggestion": "适当运动放松", "priority": "medium", "category": "exercise"}
+            ],
+            "risk_factors": [
+                {"description": "工作压力过大", "severity": "medium", "type": "psychological"},
+                {"description": "睡眠质量差", "severity": "high", "type": "lifestyle"}
+            ],
+            "metrics": {
+                "healthScore": 75,
+                "stressLevel": "medium",
+                "sleepQuality": "poor"
+            }
+        }
+        
         return {
             "success": True,
-            "record_id": "sample_id",
-            "status": "stored",
-            "timestamp": request.timestamp
+            "analysis": analysis_result,
+            "record": {
+                "record_id": "hr_123456",
+                "status": "active",
+                "timestamp": request.timestamp,
+                "type": request.record_type,
+                "data": request.data,
+                "metadata": {
+                    "createdBy": "AI健康助手",
+                    "lastModified": request.timestamp,
+                    "version": "1.0"
+                }
+            }
         }
     except Exception as e:
         logger.error(f"[ERROR] Health record processing error: {str(e)}")
@@ -69,9 +106,24 @@ async def recommend_facilities(request: TestingFacilityRequest):
     try:
         logger.info(f"[FACILITY] Finding {request.service_type} facilities")
         mock_facilities = [
-            {"name": "Health Center A", "services": ["gene_sequencing", "health_screening"]},
-            {"name": "Medical Lab B", "services": ["gene_sequencing"]},
-            {"name": "Screening Center C", "services": ["health_screening", "general"]}
+            {
+                "name": "北京协和医院",
+                "services": ["gene_sequencing", "health_screening", "early_detection"],
+                "location": "北京市东城区帅府园一号",
+                "rating": 4.8,
+                "specialties": ["遗传病筛查", "健康体检", "肿瘤早筛"],
+                "availability": "可预约",
+                "certifications": ["三级甲等医院", "国家重点实验室"]
+            },
+            {
+                "name": "中国医学科学院肿瘤医院",
+                "services": ["gene_sequencing", "cancer_screening", "precision_medicine"],
+                "location": "北京市朝阳区潘家园南里17号",
+                "rating": 4.7,
+                "specialties": ["肿瘤基因检测", "靶向治疗", "免疫治疗"],
+                "availability": "可预约",
+                "certifications": ["三级甲等医院", "国家癌症中心"]
+            }
         ]
         return {
             "success": True,
@@ -80,6 +132,97 @@ async def recommend_facilities(request: TestingFacilityRequest):
     except Exception as e:
         logger.error(f"[ERROR] Facility recommendation error: {str(e)}")
         return {"error": "Failed to get facility recommendations", "details": str(e)}
+
+@app.post("/api/ai-assistant/profile")
+async def manage_ai_assistant_profile(request: Request):
+    """管理AI助手个人档案"""
+    try:
+        raw_body = await request.body()
+        body = json.loads(raw_body)
+        return {
+            "name": body.get("name"),
+            "preferences": body.get("preferences", {}),
+            "status": "active",
+            "created_at": datetime.now().isoformat(),
+            "last_interaction": None
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] AI assistant profile error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/ai-assistant/consult")
+async def process_consultation(request: Request):
+    """处理健康咨询请求"""
+    try:
+        raw_body = await request.body()
+        body = json.loads(raw_body)
+        
+        consultation_data = str(body.get("data", {}))
+        analysis_result = await analyze_sequence(
+            sequence=consultation_data,
+            provider="deepseek",
+            analysis_type="health",
+            include_recommendations=True,
+            include_risk_factors=True,
+            include_metrics=True
+        )
+        
+        return {
+            "consultation_id": f"c_{uuid.uuid4().hex[:6]}",
+            "timestamp": body.get("timestamp"),
+            "response": {
+                "summary": analysis_result["analysis"]["summary"],
+                "recommendations": analysis_result["analysis"]["recommendations"],
+                "risk_factors": analysis_result["analysis"]["risk_factors"],
+                "metrics": analysis_result["analysis"]["metrics"]
+            }
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] Consultation processing error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/ai-assistant/recommend-facilities")
+async def recommend_ai_facilities(request: Request):
+    """AI助手推荐检测机构"""
+    try:
+        raw_body = await request.body()
+        body = json.loads(raw_body)
+        
+        facility_request = TestingFacilityRequest(
+            location=body.get("location", ""),
+            service_type=body.get("service_type", "gene_sequencing"),
+            max_results=body.get("max_results", 3)
+        )
+        
+        return await recommend_facilities(facility_request)
+    except Exception as e:
+        logger.error(f"[ERROR] AI facility recommendation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/ai-assistant/history/{user_id}")
+async def get_consultation_history(user_id: str):
+    """获取用户咨询历史"""
+    try:
+        return {
+            "consultations": [
+                {
+                    "consultation_id": "c_123456",
+                    "consultation_type": "health",
+                    "timestamp": "2024-03-15T14:30:00Z",
+                    "query": "最近总是感觉疲劳，该怎么调整作息？",
+                    "response": {
+                        "summary": "根据您的描述，建议以下调整：",
+                        "recommendations": [
+                            {"suggestion": "规律作息，保证7-8小时睡眠", "priority": "high"},
+                            {"suggestion": "适量运动，提高身体素质", "priority": "medium"}
+                        ]
+                    }
+                }
+            ]
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] History retrieval error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/analyze")
 async def analyze_data(request: Request):
@@ -95,77 +238,54 @@ async def analyze_data(request: Request):
             logger.info("[PARSE] Successfully parsed JSON request")
         except json.JSONDecodeError as e:
             logger.error(f"[PARSE] JSON parse error: {str(e)}")
-            return {"error": "Invalid JSON format", "details": str(e)}
+            raise HTTPException(status_code=400, detail="Invalid JSON format")
 
         if not isinstance(body, dict):
             logger.error(f"[VALIDATE] Invalid body type: {type(body)}")
-            return {"error": "Invalid request format", "details": f"Expected dict, got {type(body)}"}
+            raise HTTPException(status_code=400, detail=f"Expected dict, got {type(body)}")
 
         sequence = body.get('sequence')
-        if not sequence:
-            logger.error("[VALIDATE] Missing sequence")
-            return {"error": "No sequence provided"}
+        if not sequence or (isinstance(sequence, str) and not sequence.strip()):
+            logger.error("[VALIDATE] No sequence provided")
+            raise HTTPException(status_code=400, detail="No sequence provided")
 
         if not isinstance(sequence, str):
             logger.error(f"[VALIDATE] Invalid sequence type: {type(sequence)}")
-            return {"error": "Invalid sequence format", "details": f"Expected string, got {type(sequence)}"}
+            raise HTTPException(status_code=400, detail=f"Invalid sequence format: expected string, got {type(sequence)}")
 
         provider = body.get('provider', 'deepseek')
         logger.info(f"[PROCESS] Using provider: {provider}")
         logger.info(f"[PROCESS] Sequence length: {len(sequence)}")
 
-        try:
-            result = await analyze_sequence(sequence, provider)
-            logger.info("[ANALYZE] Got result from analyze_sequence")
-            logger.info(f"[ANALYZE] Result type: {type(result)}")
-            
-            if result and isinstance(result, dict):
-                logger.info("[SUCCESS] Analysis completed successfully")
-                return {
-                    "success": True,
-                    "analysis": {
-                        "summary": result.get("summary", "Analysis completed successfully"),
-                        "recommendations": result.get("recommendations", []),
-                        "riskFactors": result.get("riskFactors", []),
-                        "metrics": result.get("metrics", {
-                            "healthScore": None,
-                            "stressLevel": None,
-                            "sleepQuality": None
-                        })
-                    }
-                }
-            else:
-                logger.error(f"[ERROR] Invalid result format: {result}")
-                return {
-                    "success": True,
-                    "analysis": {
-                        "summary": "Analysis completed with limited data",
-                        "recommendations": ["Based on the provided health data"],
-                        "riskFactors": ["Limited analysis available"],
-                        "metrics": {
-                            "healthScore": None,
-                            "stressLevel": None,
-                            "sleepQuality": None
-                        }
-                    }
-                }
+        analysis_type = body.get('analysis_type', 'health')
+        if analysis_type not in ['health', 'gene', 'early_screening']:
+            logger.error(f"[VALIDATE] Invalid analysis type: {analysis_type}")
+            raise HTTPException(status_code=400, detail="Invalid analysis type")
 
-        except HTTPException as e:
-            logger.error(f"[ERROR] HTTP Exception: {str(e)}")
-            return {
-                "error": "Service temporarily unavailable",
-                "details": str(e)
-            }
-        except Exception as e:
-            logger.error(f"[ERROR] Unexpected analysis error: {str(e)}")
-            return {
-                "error": "Analysis failed",
-                "details": str(e)
-            }
+        include_recommendations = body.get('include_recommendations', True)
+        include_risk_factors = body.get('include_risk_factors', True)
+        include_metrics = body.get('include_metrics', True)
 
+        result = await analyze_sequence(
+            sequence=sequence,
+            provider=provider,
+            analysis_type=analysis_type,
+            include_recommendations=include_recommendations,
+            include_risk_factors=include_risk_factors,
+            include_metrics=include_metrics
+        )
+        logger.info("[ANALYZE] Got result from analyze_sequence")
+        logger.info(f"[ANALYZE] Result type: {type(result)}")
+        
+        if result and isinstance(result, dict) and 'analysis' in result:
+            logger.info("[SUCCESS] Analysis completed successfully")
+            return result
+        else:
+            logger.error(f"[ERROR] Invalid result format: {result}")
+            raise HTTPException(status_code=500, detail="Invalid analysis result format")
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[ERROR] Request processing error: {str(e)}")
-        return {
-            "error": "Request processing failed",
-            "details": str(e)
-        }
+        raise HTTPException(status_code=500, detail="Internal server error")
