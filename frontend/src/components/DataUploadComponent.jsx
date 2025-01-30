@@ -64,9 +64,13 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
     try {
       const API_URL = import.meta.env.VITE_API_URL;
       const requestUrl = `${API_URL}/api/analyze`;
-      console.log('API URL:', API_URL);
-      console.log('Request URL:', requestUrl);
-      console.log('Request data:', requestData);
+      console.log('[REQUEST] API URL:', API_URL);
+      console.log('[REQUEST] Full URL:', requestUrl);
+      console.log('[REQUEST] Data:', JSON.stringify(requestData, null, 2));
+
+      console.log('[REQUEST] Initiating fetch...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(requestUrl, {
         method: 'POST',
@@ -74,34 +78,59 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      console.log('[RESPONSE] Status:', response.status);
+      console.log('[RESPONSE] Headers:', Object.fromEntries(response.headers.entries()));
 
       const result = await response.json();
-      console.log('Analysis Result:', result);
+      console.log('[RESPONSE] Data:', JSON.stringify(result, null, 2));
       
       if (!response.ok) {
-        throw new Error(result.error || result.detail || 'Failed to analyze sequence');
+        console.error('[ERROR] Response not OK:', response.status);
+        throw new Error(
+          result.error || 
+          result.detail || 
+          `Failed to analyze sequence (Status: ${response.status})`
+        );
       }
 
-      if (result.success) {
+      if (result.success || result.analysis) {
+        console.log('[SUCCESS] Processing analysis result');
         const analysis = result.analysis;
         if (!analysis) {
+          console.error('[ERROR] Missing analysis data in response');
           throw new Error('Missing analysis data in response');
         }
 
-        // Format the analysis data for display
+        // Extract sections from summary if they exist
+        const summaryText = analysis.summary || '';
+        let recommendations = analysis.recommendations || [];
+        let riskFactors = analysis.riskFactors || [];
+        let metrics = analysis.metrics || {};
+
+        // Parse sections from summary if they're embedded
+        if (summaryText.includes('### Recommendations')) {
+          const recommendationsSection = summaryText.split('### Recommendations')[1].split('###')[0];
+          recommendations = recommendationsSection.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim().substring(2));
+        }
+        
+        if (summaryText.includes('### Risk Factors')) {
+          const riskFactorsSection = summaryText.split('### Risk Factors')[1].split('###')[0];
+          riskFactors = riskFactorsSection.split('\n').filter(line => line.trim().startsWith('-')).map(line => line.trim().substring(2));
+        }
+
         const formattedAnalysis = {
-          summary: analysis.summary || 'No summary available',
-          recommendations: analysis.recommendations || [],
-          riskFactors: analysis.riskFactors || [],
-          metrics: analysis.metrics || {}
+          summary: summaryText,
+          recommendations,
+          riskFactors,
+          metrics
         };
 
-        // Only show fallback message if we detect mock data
-        const isRealAnalysis = !analysis.summary?.includes('Test analysis result') && 
-                             analysis.recommendations?.length > 0 &&
-                             analysis.recommendations[0] !== 'Based on DeepSeek analysis';
+        const isRealAnalysis = summaryText && !summaryText.includes('Test analysis result');
 
         setSuccess(isRealAnalysis ? 
           'Analysis completed successfully' : 
@@ -228,4 +257,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;                                    
+export default DataUploadComponent;                                        
