@@ -23,7 +23,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [provider, setProvider] = useState('claude');
+  const [provider, setProvider] = useState('deepseek');
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -61,31 +61,54 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
 
       const response = await fetch(requestUrl, {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-        },
         body: formData,
-        mode: 'cors'
+        headers: {
+          'Accept': 'application/json'
+        }
       });
 
-      console.log('Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      const result = JSON.parse(responseText);
+      const result = await response.json();
+      console.log('Analysis Result:', result);
+      
       if (!response.ok) {
         throw new Error(result.error || result.detail || 'Failed to analyze sequence');
       }
 
-      setSuccess('Analysis completed successfully');
-      onAnalysisComplete(result);
-      setSequence('');
-      setFile(null);
+      if (result.success) {
+        const analysis = result.analysis;
+        if (!analysis) {
+          throw new Error('Missing analysis data in response');
+        }
+
+        // Format the analysis data for display
+        const formattedAnalysis = {
+          summary: analysis.summary || 'No summary available',
+          recommendations: analysis.recommendations || [],
+          riskFactors: analysis.riskFactors || [],
+          metrics: analysis.metrics || {}
+        };
+
+        // Only show fallback message if we detect mock data
+        const isRealAnalysis = !analysis.summary?.includes('Test analysis result') && 
+                             analysis.recommendations?.length > 0 &&
+                             analysis.recommendations[0] !== 'Based on DeepSeek analysis';
+
+        setSuccess(isRealAnalysis ? 
+          'Analysis completed successfully' : 
+          'Analysis completed with fallback data (AI service temporarily unavailable)'
+        );
+
+        onAnalysisComplete({
+          success: true,
+          analysis: formattedAnalysis
+        });
+
+        setSequence('');
+        setFile(null);
+        console.log('Analysis Results:', formattedAnalysis);
+      } else {
+        throw new Error(result.error || 'Analysis failed to complete');
+      }
     } catch (error) {
       console.error('API Error:', error);
       setError(error.message);
@@ -195,4 +218,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;                  
+export default DataUploadComponent;                              
