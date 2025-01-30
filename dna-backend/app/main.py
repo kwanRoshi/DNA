@@ -40,44 +40,61 @@ async def analyze_data(request: Request):
     try:
         raw_body = await request.body()
         raw_text = raw_body.decode('utf-8')
-        logger.info(f"Raw request body length: {len(raw_text)}")
+        logger.info(f"[REQUEST] Raw body length: {len(raw_text)}")
+        logger.info(f"[REQUEST] Content: {raw_text[:500]}...")
         
         try:
             body = json.loads(raw_text)
-            logger.info("Successfully parsed JSON request")
+            logger.info("[PARSE] Successfully parsed JSON request")
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON request: {str(e)}")
-            return {"error": "Invalid JSON format"}
+            logger.error(f"[PARSE] JSON parse error: {str(e)}")
+            return {"error": "Invalid JSON format", "details": str(e)}
 
         if not isinstance(body, dict):
-            logger.error(f"Invalid request format: {type(body)}")
-            return {"error": "Invalid request format"}
+            logger.error(f"[VALIDATE] Invalid body type: {type(body)}")
+            return {"error": "Invalid request format", "details": f"Expected dict, got {type(body)}"}
 
         sequence = body.get('sequence')
         if not sequence:
-            logger.error("No sequence data found in request")
+            logger.error("[VALIDATE] Missing sequence")
             return {"error": "No sequence provided"}
 
         if not isinstance(sequence, str):
-            logger.error(f"Invalid sequence type: {type(sequence)}")
-            return {"error": "Invalid sequence format"}
+            logger.error(f"[VALIDATE] Invalid sequence type: {type(sequence)}")
+            return {"error": "Invalid sequence format", "details": f"Expected string, got {type(sequence)}"}
 
         provider = body.get('provider', 'deepseek')
-        logger.info(f"Processing sequence (length: {len(sequence)}) with provider: {provider}")
+        logger.info(f"[PROCESS] Using provider: {provider}")
+        logger.info(f"[PROCESS] Sequence length: {len(sequence)}")
 
         try:
             result = await analyze_sequence(sequence, provider)
+            logger.info("[ANALYZE] Got result from analyze_sequence")
+            logger.info(f"[ANALYZE] Result type: {type(result)}")
+            
             if result and isinstance(result, dict):
-                logger.info("Analysis completed successfully")
-                return result
-            else:
-                logger.error("Invalid result format from analysis service")
+                logger.info("[SUCCESS] Analysis completed successfully")
                 return {
                     "success": True,
                     "analysis": {
-                        "summary": "Analysis completed with fallback data",
+                        "summary": result.get("summary", "Analysis completed successfully"),
+                        "recommendations": result.get("recommendations", []),
+                        "riskFactors": result.get("riskFactors", []),
+                        "metrics": result.get("metrics", {
+                            "healthScore": None,
+                            "stressLevel": None,
+                            "sleepQuality": None
+                        })
+                    }
+                }
+            else:
+                logger.error(f"[ERROR] Invalid result format: {result}")
+                return {
+                    "success": True,
+                    "analysis": {
+                        "summary": "Analysis completed with limited data",
                         "recommendations": ["Based on the provided health data"],
-                        "riskFactors": ["Unable to process with primary service"],
+                        "riskFactors": ["Limited analysis available"],
                         "metrics": {
                             "healthScore": None,
                             "stressLevel": None,
@@ -87,27 +104,21 @@ async def analyze_data(request: Request):
                 }
 
         except HTTPException as e:
-            # Handle known HTTP exceptions
-            logger.warning(f"HTTP Exception during analysis: {str(e)}")
+            logger.error(f"[ERROR] HTTP Exception: {str(e)}")
             return {
-                "success": True,
-                "analysis": {
-                    "summary": "Test analysis result (fallback)",
-                    "recommendations": ["Based on DeepSeek analysis"],
-                    "riskFactors": ["Unable to process with primary service"],
-                    "metrics": {
-                        "healthScore": None,
-                        "stressLevel": None,
-                        "sleepQuality": None
-                    }
-                }
+                "error": "Service temporarily unavailable",
+                "details": str(e)
             }
         except Exception as e:
-            # Handle unexpected errors
-            logger.error(f"Unexpected error during analysis: {str(e)}")
-            return {"error": f"Analysis failed: {str(e)}"}
+            logger.error(f"[ERROR] Unexpected analysis error: {str(e)}")
+            return {
+                "error": "Analysis failed",
+                "details": str(e)
+            }
 
     except Exception as e:
-        # Handle request processing errors
-        logger.error(f"Error processing request: {str(e)}")
-        return {"error": str(e)}
+        logger.error(f"[ERROR] Request processing error: {str(e)}")
+        return {
+            "error": "Request processing failed",
+            "details": str(e)
+        }
