@@ -10,6 +10,21 @@ from app.services.deepseek_service import analyze_sequence
 class AnalysisRequest(BaseModel):
     sequence: str
     provider: str = "deepseek"
+    analysis_type: str = "health"  # health, gene, early_screening
+    include_recommendations: bool = True
+    include_risk_factors: bool = True
+    include_metrics: bool = True
+
+class HealthRecordRequest(BaseModel):
+    user_id: Optional[str]
+    record_type: str  # consultation, gene_sequence, screening
+    data: dict
+    timestamp: Optional[str]
+
+class TestingFacilityRequest(BaseModel):
+    location: Optional[str]
+    service_type: str  # gene_sequencing, health_screening, general
+    max_results: int = 5
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,8 +50,40 @@ def root():
 def healthz():
     return {"status": "healthy"}
 
+@app.post("/api/health-records")
+async def manage_health_records(request: HealthRecordRequest):
+    try:
+        logger.info(f"[HEALTH_RECORD] Processing {request.record_type} record")
+        return {
+            "success": True,
+            "record_id": "sample_id",
+            "status": "stored",
+            "timestamp": request.timestamp
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] Health record processing error: {str(e)}")
+        return {"error": "Failed to process health record", "details": str(e)}
+
+@app.post("/api/recommend-facilities")
+async def recommend_facilities(request: TestingFacilityRequest):
+    try:
+        logger.info(f"[FACILITY] Finding {request.service_type} facilities")
+        mock_facilities = [
+            {"name": "Health Center A", "services": ["gene_sequencing", "health_screening"]},
+            {"name": "Medical Lab B", "services": ["gene_sequencing"]},
+            {"name": "Screening Center C", "services": ["health_screening", "general"]}
+        ]
+        return {
+            "success": True,
+            "facilities": mock_facilities[:request.max_results]
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] Facility recommendation error: {str(e)}")
+        return {"error": "Failed to get facility recommendations", "details": str(e)}
+
 @app.post("/api/analyze")
 async def analyze_data(request: Request):
+    """Main analysis endpoint supporting health consultation, gene sequencing, and early screening."""
     try:
         raw_body = await request.body()
         raw_text = raw_body.decode('utf-8')

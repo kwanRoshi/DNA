@@ -18,7 +18,14 @@ if not DEEPSEEK_API_KEY:
 
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 
-async def analyze_sequence(sequence: str, provider: str = "deepseek") -> dict:
+async def analyze_sequence(
+    sequence: str,
+    provider: str = "deepseek",
+    analysis_type: str = "health",
+    include_recommendations: bool = True,
+    include_risk_factors: bool = True,
+    include_metrics: bool = True
+) -> dict:
     try:
         logger.info(f"Starting analysis with provider: {provider}")
         logger.info(f"Sequence length: {len(sequence)}")
@@ -110,7 +117,13 @@ async def analyze_with_claude(sequence: str) -> dict:
             detail=f"Failed to analyze with Claude: {str(e)}"
         )
 
-async def analyze_with_deepseek(sequence: str) -> dict:
+async def analyze_with_deepseek(
+    sequence: str,
+    analysis_type: str = "health",
+    include_recommendations: bool = True,
+    include_risk_factors: bool = True,
+    include_metrics: bool = True
+) -> dict:
     if not DEEPSEEK_API_KEY:
         logger.error("DeepSeek API key not found")
         raise HTTPException(
@@ -125,16 +138,28 @@ async def analyze_with_deepseek(sequence: str) -> dict:
     }
     logger.info("API key configured successfully")
     
+    system_prompts = {
+        "health": "你是一位专业的健康顾问AI助手。请分析健康数据并提供详细的健康建议，包括：1) 健康状况总结，2) 潜在风险因素，3) 改善建议。请确保回复包含明确的总结、风险因素和建议部分。",
+        "gene": "你是一位基因测序专家AI助手。请分析基因数据并提供专业见解，包括：1) 基因特征分析，2) 遗传风险评估，3) 健康建议。请确保回复包含基因分析总结、风险评估和建议部分。",
+        "early_screening": "你是一位疾病筛查专家AI助手。请分析数据并进行早期疾病风险评估，包括：1) 筛查结果总结，2) 风险等级评估，3) 预防建议。请确保回复包含筛查总结、风险评估和预防建议部分。"
+    }
+
+    analysis_prompts = {
+        "health": f"请分析以下健康数据，提供健康状况评估和改善建议：\n{sequence[:1000]}",
+        "gene": f"请分析以下基因序列数据，识别关键特征和潜在健康影响：\n{sequence[:1000]}",
+        "early_screening": f"请对以下数据进行分析，进行早期疾病风险筛查：\n{sequence[:1000]}"
+    }
+
     data = {
         "model": "deepseek-chat",
         "messages": [
             {
                 "role": "system",
-                "content": "You are a healthcare AI expert. Analyze the provided health data to: 1) Identify key health metrics and patterns, 2) Assess potential health risks and concerns, 3) Provide actionable recommendations for health improvement. Format your response to include clear sections for Summary, Risk Factors, and Recommendations."
+                "content": system_prompts.get(analysis_type, system_prompts["health"])
             },
             {
                 "role": "user",
-                "content": f"Please analyze this health data and provide structured insights: {sequence[:1000]}"
+                "content": analysis_prompts.get(analysis_type, analysis_prompts["health"])
             }
         ],
         "temperature": 0.3,
@@ -193,35 +218,68 @@ async def analyze_with_deepseek(sequence: str) -> dict:
                         detail="Invalid response from AI service"
                     )
                 
+                from .utils import (
+                    determine_priority, determine_category, determine_severity,
+                    determine_risk_type, extract_health_score, extract_stress_level,
+                    extract_sleep_quality, extract_genetic_risk, extract_inheritance_pattern,
+                    extract_risk_level, extract_confidence_score
+                )
+
                 analysis_text = result["choices"][0]["message"]["content"]
-                
-                # Parse the structured response into sections
                 sections = analysis_text.split("\n\n")
                 summary = ""
                 recommendations = []
                 risk_factors = []
                 
                 for section in sections:
-                    if "Summary:" in section:
-                        summary = section.replace("Summary:", "").strip()
-                    elif "Risk Factors:" in section:
-                        risks = section.replace("Risk Factors:", "").strip().split("\n")
-                        risk_factors = [r.strip("- ") for r in risks if r.strip()]
-                    elif "Recommendations:" in section:
-                        recs = section.replace("Recommendations:", "").strip().split("\n")
-                        recommendations = [r.strip("- ") for r in recs if r.strip()]
+                    if "总结:" in section or "Summary:" in section:
+                        summary = section.replace("总结:", "").replace("Summary:", "").strip()
+                    elif "风险因素:" in section or "Risk Factors:" in section:
+                        risks = section.replace("风险因素:", "").replace("Risk Factors:", "").strip().split("\n")
+                        for risk in risks:
+                            if risk.strip():
+                                risk_text = risk.strip("- ")
+                                risk_factors.append({
+                                    "description": risk_text,
+                                    "severity": determine_severity(risk_text),
+                                    "type": determine_risk_type(risk_text)
+                                })
+                    elif "建议:" in section or "Recommendations:" in section:
+                        recs = section.replace("建议:", "").replace("Recommendations:", "").strip().split("\n")
+                        for rec in recs:
+                            if rec.strip():
+                                rec_text = rec.strip("- ")
+                                recommendations.append({
+                                    "suggestion": rec_text,
+                                    "priority": determine_priority(rec_text),
+                                    "category": determine_category(rec_text)
+                                })
+
+                metrics = {
+                    "healthScore": extract_health_score(analysis_text),
+                    "stressLevel": extract_stress_level(analysis_text),
+                    "sleepQuality": extract_sleep_quality(analysis_text)
+                }
+
+                if analysis_type == "gene":
+                    metrics.update({
+                        "geneticRiskScore": extract_genetic_risk(analysis_text),
+                        "inheritancePattern": extract_inheritance_pattern(analysis_text)
+                    })
+                elif analysis_type == "early_screening":
+                    metrics.update({
+                        "riskLevel": extract_risk_level(analysis_text),
+                        "confidenceScore": extract_confidence_score(analysis_text)
+                    })
                 
                 return {
                     "success": True,
                     "analysis": {
                         "summary": summary or analysis_text,
-                        "recommendations": recommendations or ["Please provide more detailed health data for specific recommendations"],
-                        "riskFactors": risk_factors or ["Unable to determine risk factors from provided data"],
-                        "metrics": {
-                            "healthScore": None,
-                            "stressLevel": None,
-                            "sleepQuality": None
-                        }
+                        "recommendations": recommendations or [{"suggestion": "请提供更详细的健康数据以获取具体建议", "priority": "medium", "category": "医疗"}],
+                        "riskFactors": risk_factors or [{"description": "无法从提供的数据中确定风险因素", "severity": "low", "type": "未分类"}],
+                        "metrics": metrics,
+                        "analysisType": analysis_type
                     }
                 }
             except httpx.TimeoutException as e:
