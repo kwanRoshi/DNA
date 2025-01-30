@@ -23,7 +23,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [provider, setProvider] = useState('claude');
+  const [provider, setProvider] = useState('deepseek');
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -43,49 +43,103 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
     setIsLoading(true);
     setError(null);
 
-    const formData = new FormData();
+    let sequenceData = sequence;
+    
     if (file) {
-      formData.append('file', file);
+      const text = await file.text();
+      sequenceData = text;
     }
-    if (sequence) {
-      formData.append('sequence', sequence);
+
+    if (!sequenceData) {
+      setError('Please provide sequence data or upload a file');
+      setIsLoading(false);
+      return;
     }
-    formData.append('provider', provider);
+
+    const requestData = {
+      sequence: sequenceData,
+      provider: provider
+    };
 
     try {
       const API_URL = import.meta.env.VITE_API_URL;
-      const requestUrl = `${API_URL}/analyze`;
-      console.log('API URL:', API_URL);
-      console.log('Request URL:', requestUrl);
-      console.log('FormData contents:', Object.fromEntries(formData.entries()));
+      const requestUrl = `${API_URL}/api/analyze`;
+      console.log('[REQUEST] API URL:', API_URL);
+      console.log('[REQUEST] Full URL:', requestUrl);
+      console.log('[REQUEST] Data:', JSON.stringify(requestData, null, 2));
+
+      console.log('[REQUEST] Initiating fetch...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch(requestUrl, {
         method: 'POST',
+        body: JSON.stringify(requestData),
         headers: {
-          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: formData,
-        mode: 'cors'
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      console.log('[RESPONSE] Status:', response.status);
+      console.log('[RESPONSE] Headers:', Object.fromEntries(response.headers.entries()));
 
-      console.log('Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      const result = JSON.parse(responseText);
+      const result = await response.json();
+      console.log('[RESPONSE] Data:', JSON.stringify(result, null, 2));
+      
       if (!response.ok) {
-        throw new Error(result.error || result.detail || 'Failed to analyze sequence');
+        console.error('[ERROR] Response not OK:', response.status);
+        throw new Error(
+          result.error || 
+          result.detail || 
+          `Failed to analyze sequence (Status: ${response.status})`
+        );
       }
 
-      setSuccess('Analysis completed successfully');
-      onAnalysisComplete(result);
-      setSequence('');
-      setFile(null);
+      if (result.success || result.analysis) {
+        console.log('[SUCCESS] Processing analysis result');
+        const analysis = result.analysis;
+        if (!analysis) {
+          console.error('[ERROR] Missing analysis data in response');
+          throw new Error('Missing analysis data in response');
+        }
+
+        const summaryText = analysis.summary || '';
+        const recommendations = analysis.recommendations || [];
+        const riskFactors = analysis.riskFactors || [];
+        const metrics = analysis.metrics || {};
+
+        const formattedAnalysis = {
+          summary: summaryText,
+          recommendations: recommendations.length > 0 ? recommendations : summaryText.split('\n').filter(line => line.includes('建议') || line.includes('推荐')),
+          riskFactors: riskFactors.length > 0 ? riskFactors : summaryText.split('\n').filter(line => line.includes('风险') || line.includes('警告')),
+          metrics: {
+            healthScore: metrics.healthScore || parseFloat(summaryText.match(/健康评分[：:]\s*(\d+)/)?.[1]),
+            stressLevel: metrics.stressLevel || parseFloat(summaryText.match(/压力水平[：:]\s*(\d+)/)?.[1]),
+            sleepQuality: metrics.sleepQuality || parseFloat(summaryText.match(/睡眠质量[：:]\s*(\d+)/)?.[1])
+          }
+        };
+
+        const isRealAnalysis = summaryText && !summaryText.includes('Test analysis result');
+
+        setSuccess(isRealAnalysis ? 
+          'Analysis completed successfully' : 
+          'Analysis completed with fallback data (AI service temporarily unavailable)'
+        );
+
+        onAnalysisComplete({
+          success: true,
+          analysis: formattedAnalysis
+        });
+
+        setSequence('');
+        setFile(null);
+        console.log('Analysis Results:', formattedAnalysis);
+      } else {
+        throw new Error(result.error || 'Analysis failed to complete');
+      }
     } catch (error) {
       console.error('API Error:', error);
       setError(error.message);
@@ -155,7 +209,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           placeholder="Paste your sequence here..."
           variant="outlined"
           fullWidth
-          inputProps={{ 'devinid': 'sequence-input' }}
+          inputProps={{ 'data-devinid': 'sequence-input' }}
         />
 
         {error && (
@@ -182,7 +236,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
               backgroundColor: 'primary.dark',
             }
           }}
-          devinid="analyze-button"
+          data-devinid="analyze-button"
         >
           {isLoading ? (
             <CircularProgress size={24} color="inherit" />
@@ -195,4 +249,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent;                  
+export default DataUploadComponent;                                          
