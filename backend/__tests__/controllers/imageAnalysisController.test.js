@@ -1,30 +1,49 @@
 import fs from 'fs/promises';
-import deepseekService from '../../services/deepseekService.js';
+import DeepseekService from '../../services/deepseekService.js';
 import { analyzeImage } from '../../controllers/imageAnalysisController.js';
 
 // Mock dependencies
 jest.mock('fs/promises');
-jest.mock('../../services/deepseekService.js');
+jest.mock('../../services/deepseekService.js', () => {
+  return jest.fn().mockImplementation(() => ({
+    analyzeImage: jest.fn().mockResolvedValue({
+      analysis: {
+        summary: "Mock image analysis result",
+        generalHealthScore: 85,
+        riskFactorsScore: 80,
+        lifestyleScore: 75
+      },
+      confidence: 0.9,
+      recommendations: [
+        { category: "Health", text: "Regular exercise recommended", priority: "high" }
+      ],
+      risks: [
+        { type: "Lifestyle", severity: "medium", description: "Moderate health risks detected" }
+      ]
+    })
+  }));
+});
 
 describe('Image Analysis Controller', () => {
   let mockReq;
   let mockRes;
   const consoleSpy = jest.spyOn(console, 'error');
-  const mockUser = {
-    walletAddress: '0x123456789',
-    imageAnalysis: [
-      {
-        _id: 'analysis1',
-        timestamp: new Date('2025-01-01'),
-        imageInfo: {
-          fileName: 'test.jpg',
-          fileType: 'image/jpeg',
-          fileSize: 1024
-        },
-        analysisType: 'general',
-        result: { description: '测试分析结果' }
-      }
-    ]
+  const mockDeepseekInstance = {
+    analyzeImage: jest.fn().mockResolvedValue({
+      analysis: {
+        summary: "Mock image analysis result",
+        generalHealthScore: 85,
+        riskFactorsScore: 80,
+        lifestyleScore: 75
+      },
+      confidence: 0.9,
+      recommendations: [
+        { category: "Health", text: "Regular exercise recommended", priority: "high" }
+      ],
+      risks: [
+        { type: "Lifestyle", severity: "medium", description: "Moderate health risks detected" }
+      ]
+    })
   };
 
   beforeEach(() => {
@@ -50,18 +69,9 @@ describe('Image Analysis Controller', () => {
       json: jest.fn()
     };
 
-    // 模拟文件操作
+    // Initialize services and mocks
     fs.unlink.mockResolvedValue();
-
-    // 模拟 deepseek 服务
-    deepseekService.analyzeImage.mockResolvedValue({
-      description: '测试分析结果'
-    });
-
-    // 模拟 deepseek 服务
-    deepseekService.analyzeImage.mockResolvedValue({
-      description: '测试分析结果'
-    });
+    DeepseekService.mockImplementation(() => mockDeepseekInstance);
   });
 
   afterEach(() => {
@@ -72,8 +82,8 @@ describe('Image Analysis Controller', () => {
     test('成功分析图片并保存结果', async () => {
       await analyzeImage(mockReq, mockRes);
 
-      expect(deepseekService.analyzeImage).toHaveBeenCalledWith('test/path', 'general');
-      expect(deepseekService.analyzeImage).toHaveBeenCalled();
+      expect(mockDeepseekInstance.analyzeImage).toHaveBeenCalledWith('test/path', 'general');
+      expect(mockDeepseekInstance.analyzeImage).toHaveBeenCalled();
       expect(fs.unlink).toHaveBeenCalledWith('test/path');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
@@ -114,7 +124,7 @@ describe('Image Analysis Controller', () => {
     });
 
     test('分析服务失败时返回500错误', async () => {
-      deepseekService.analyzeImage.mockRejectedValue(new Error('分析失败'));
+      mockDeepseekInstance.analyzeImage.mockRejectedValueOnce(new Error('分析失败'));
       await analyzeImage(mockReq, mockRes);
 
       expect(consoleSpy).toHaveBeenCalledWith('图片分析错误:', expect.any(Error));
