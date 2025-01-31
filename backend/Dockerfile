@@ -9,14 +9,12 @@ RUN apt-get update && \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy application files
-COPY requirements.txt setup.py pyproject.toml ./
-COPY app app/
-COPY tests tests/
-
-# Install dependencies
+# Copy only requirements first for better caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
+
+# Copy application code
+COPY app app/
 
 # Set environment variables
 ENV PORT=8080
