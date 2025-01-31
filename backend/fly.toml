@@ -2,7 +2,11 @@ app = "dna-backend"
 primary_region = "sin"
 
 [build]
-  dockerfile = "Dockerfile"
+  builder = "paketobuildpacks/builder:base"
+  buildpacks = ["gcr.io/paketo-buildpacks/python"]
+
+[build.args]
+  PYTHON_VERSION = "3.12"
 
 [env]
   OLLAMA_ENABLED = "true"
@@ -12,6 +16,7 @@ primary_region = "sin"
   PORT = "8080"
   PYTHONPATH = "/app"
   PYTHON_MODULE = "app.main:app"
+  PYTHONUNBUFFERED = "1"
 
 [http_service]
   internal_port = 8080
