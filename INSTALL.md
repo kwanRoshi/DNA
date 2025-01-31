@@ -63,16 +63,91 @@ ollama list
 
 ### 4. MongoDB Setup
 ```bash
-# Install MongoDB (Ubuntu)
-sudo apt-get update
-sudo apt-get install -y mongodb
+# 快速安装
 
-# Start MongoDB service
-sudo systemctl start mongodb
-sudo systemctl enable mongodb
+使用一键安装脚本安装所有依赖：
 
-# Verify MongoDB connection
-mongosh --eval "db.version()"
+```bash
+chmod +x one_click_install.sh
+./one_click_install.sh
+```
+
+此脚本将自动安装和配置：
+- Python 3.12 环境
+- Node.js 18 和 pnpm
+- MongoDB 数据库
+- Ollama 和 deepseek-r1:1.5b 模型
+- 所有项目依赖
+
+# 手动安装
+
+如果需要手动安装各个组件：
+
+## 1. MongoDB
+```bash
+bash backend/install_mongodb.sh
+mongosh --eval "db.version()"  # 验证安装
+```
+
+## 2. Python 环境
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt
+pip install -r backend/requirements-dev.txt
+```
+
+## 3. Node.js 环境
+```bash
+# 安装 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.nvm/nvm.sh
+
+# 安装 Node.js
+nvm install 18
+nvm use 18
+
+# 安装 pnpm
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+source ~/.bashrc
+```
+
+## 4. Ollama 设置
+```bash
+# 安装 Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# 下载模型
+ollama pull deepseek-r1:1.5b
+
+# 验证模型
+ollama run deepseek-r1:1.5b "你好，请分析这段健康数据：血压 120/80，血糖 5.2"
+```
+
+## 环境变量配置
+
+后端配置 (backend/.env):
+```env
+# AI 模型配置
+OLLAMA_ENABLED=true
+OLLAMA_MODEL=deepseek-r1:1.5b
+OLLAMA_API_BASE=http://localhost:11434
+OLLAMA_TIMEOUT_SECONDS=120
+
+# 模型优先级配置
+MODEL_FALLBACK_PRIORITY=ollama,deepseek,claude
+
+# 服务器配置
+PORT=8080
+HOST=0.0.0.0
+```
+
+前端配置 (frontend/.env):
+```env
+VITE_API_URL=http://localhost:8080
+VITE_ENABLE_CHINESE_UI=true
+VITE_ENABLE_LOCAL_MODEL=true
+```
 ```
 
 ### 5. Environment Configuration

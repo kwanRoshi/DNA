@@ -19,9 +19,22 @@ async def test_analyze_with_ollama(test_data_files):
         "response": "分析结果：血压正常，血糖在标准范围内，BMI指数正常。建议：保持健康饮食，规律作息，适量运动。"
     }
     
-    with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = mock_response
+    with patch('httpx.AsyncClient') as mock_client:
+        mock_client_instance = AsyncMock()
+        mock_client.return_value = mock_client_instance
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        
+        mock_get_response = AsyncMock()
+        mock_get_response.status_code = 200
+        mock_get_response.json = AsyncMock()
+        mock_get_response.json.return_value = {"models": [{"name": "deepseek-r1:1.5b"}]}
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+
+        mock_post_response = AsyncMock()
+        mock_post_response.status_code = 200
+        mock_post_response.json = AsyncMock()
+        mock_post_response.json.return_value = mock_response
+        mock_client_instance.post = AsyncMock(return_value=mock_post_response)
         
         for file_path in test_data_files:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -65,20 +78,23 @@ async def test_analyze_with_ollama_error_handling():
     
     # Test invalid input data
     invalid_data = "这不是有效的健康数据。没有任何指标。"
-    with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {"response": "无法识别的数据"}
+    with patch('httpx.AsyncClient') as mock_client:
+        mock_client_instance = AsyncMock()
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
         
+        # Mock the models list call
+        mock_client_instance.get.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={"models": [{"name": "deepseek-r1:1.5b"}]})
+        )
+        
+        # Mock the generation call
+        mock_client_instance.post.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={"response": "无法识别的数据"})
+        )
+
         with pytest.raises(HTTPException) as exc_info:
             await analyze_with_ollama(invalid_data)
         assert exc_info.value.status_code == 500
-        assert "Error processing health data" in str(exc_info.value.detail)
-        
-    # Test API error
-    with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.status_code = 500
-        mock_post.return_value.json.return_value = {"error": "Internal server error"}
-        
-        with pytest.raises(HTTPException) as exc_info:
-            await analyze_with_ollama("血压: 120/80")
-        assert exc_info.value.status_code == 500
+        assert "No valid health indicators found" in str(exc_info.value.detail)

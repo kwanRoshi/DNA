@@ -1,7 +1,16 @@
 import pytest
+import os
 from fastapi import HTTPException
-from app.routers.analysis import process_sequence
-from tests.test_analysis_pipeline import validate_health_metrics
+from httpx import AsyncClient
+
+from app.routers.analysis import process_sequence, analyze_sequence
+from app.models.analysis import AnalysisResponse
+from app.services.ollama_service import analyze_with_ollama
+from app.services.deepseek_service import analyze_with_deepseek
+from app.services.claude_service import analyze_with_claude
+
+from .test_analysis_pipeline import validate_health_metrics
+from .data.mock_responses import MOCK_HEALTH_RESPONSE, format_mock_response
 from unittest.mock import patch, AsyncMock
 import os
 
@@ -75,16 +84,11 @@ BMI：23.5
             })
         )
         
-        mock_client_instance = AsyncMock()
-        mock_client.return_value = mock_client_instance
-        mock_client_instance.__aenter__.return_value = mock_client_instance
-        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
-        mock_client_instance.post = AsyncMock(return_value=mock_post_response)
-        
+        # Test with Ollama provider
         result = await process_sequence(test_sequence, "ollama")
-    assert isinstance(result, dict)
-    assert "analysis" in result
-    analysis = result["analysis"]
+        assert isinstance(result, dict)
+        assert "analysis" in result
+        analysis = result["analysis"]
     assert isinstance(analysis, dict)
     assert all(key in analysis for key in ["summary", "recommendations", "risk_factors", "metrics"])
     assert any(ord(c) > 127 for c in analysis["summary"])  # Contains Chinese characters
