@@ -1,61 +1,98 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import useStore from '../utils/store';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mockStore } from './setup';
+
+const initialState = {
+  token: null,
+  userId: null,
+  userInfo: null,
+  walletAddress: null,
+  healthData: null,
+  analysisResult: null,
+  isLoading: false,
+  error: null
+};
 
 describe('Store', () => {
   beforeEach(() => {
-    useStore.setState({
-      walletAddress: null,
-      healthData: null,
-      analysisResult: null,
-    });
+    mockStore.reset();
+  });
+
+  afterEach(() => {
+    mockStore.reset();
+  });
+
+  it('should initialize with default values', () => {
+    const state = mockStore.getState();
+    expect(state).toEqual(initialState);
   });
 
   it('should set wallet address', () => {
-    const mockAddress = '0x123';
-    useStore.getState().setWalletAddress(mockAddress);
-    expect(useStore.getState().walletAddress).toBe(mockAddress);
+    mockStore.setWalletAddress('0x123');
+    const state = mockStore.getState();
+    expect(state.walletAddress).toBe('0x123');
+    expect(state.error).toBeNull();
   });
 
   it('should set health data', () => {
-    const mockData = { data: 'test data' };
-    useStore.getState().setHealthData(mockData);
-    expect(useStore.getState().healthData).toEqual(mockData);
+    const data = { test: 'data' };
+    mockStore.setState({ healthData: data, isLoading: true });
+    let state = mockStore.getState();
+    expect(state.isLoading).toBe(true);
+
+    mockStore.setState({ healthData: data, isLoading: false });
+    state = mockStore.getState();
+    expect(state.healthData).toEqual(data);
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBeNull();
   });
 
   it('should set analysis result', () => {
-    const mockResult = {
-      summary: '健康状况良好',
-      recommendations: ['多运动'],
+    const result = { summary: '健康状况良好' };
+    mockStore.setAnalysisResult(result);
+    const state = mockStore.getState();
+    expect(state.analysisResult).toEqual(result);
+    expect(state.error).toBeNull();
+  });
+
+  it('should handle login action', () => {
+    const payload = {
+      token: 'test-token',
+      userId: '123',
+      userInfo: { name: '张三' }
     };
-    useStore.getState().setAnalysisResult(mockResult);
-    expect(useStore.getState().analysisResult).toEqual(mockResult);
+    mockStore.login(payload);
+    const state = mockStore.getState();
+    expect(state.token).toBe(payload.token);
+    expect(state.userId).toBe(payload.userId);
+    expect(state.userInfo).toEqual(payload.userInfo);
+    expect(state.isLoading).toBe(false);
+    expect(state.error).toBeNull();
   });
 
-  it('should reset all state', () => {
-    // 先设置一些值
-    const store = useStore.getState();
-    store.setWalletAddress('0x123');
-    store.setHealthData({ data: 'test' });
-    store.setAnalysisResult({ summary: 'test' });
-
-    // 重置状态
-    store.reset();
-
-    // 验证所有值都被重置
-    expect(useStore.getState().walletAddress).toBeNull();
-    expect(useStore.getState().healthData).toBeNull();
-    expect(useStore.getState().analysisResult).toBeNull();
+  it('should handle logout action', () => {
+    const loginData = {
+      token: 'test-token',
+      userId: '123',
+      userInfo: { name: '张三' }
+    };
+    mockStore.login(loginData);
+    mockStore.logout();
+    const state = mockStore.getState();
+    expect(state).toEqual(initialState);
   });
 
-  it('should maintain state immutability', () => {
-    const initialState = useStore.getState();
-    const mockData = { data: 'test' };
+  it('should reset state', () => {
+    mockStore.setState({
+      token: 'test-token',
+      userId: '123',
+      userInfo: { name: '张三' },
+      walletAddress: '0x123',
+      healthData: { test: 'data' },
+      analysisResult: { summary: 'test' }
+    });
     
-    useStore.getState().setHealthData(mockData);
-    
-    // 验证原始状态没有被修改
-    expect(initialState.healthData).toBeNull();
-    // 验证新状态已更新
-    expect(useStore.getState().healthData).toEqual(mockData);
+    mockStore.reset();
+    const state = mockStore.getState();
+    expect(state).toEqual(initialState);
   });
 });

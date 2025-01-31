@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, actions } from '../utils/store';
+import useStore from '../utils/store';
 import './LoginComponent.css';
 
 const LoginComponent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { dispatch } = useStore();
+  const store = useStore();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,41 +15,60 @@ const LoginComponent = () => {
     setError('');
 
     try {
-      // For now, we'll just simulate a successful login
-      setTimeout(() => {
-        dispatch(actions.login(
-          'dummy-token',
-          'guest-user',
-          { name: 'Guest User' }
-        ));
-        navigate('/dashboard');
-      }, 1000);
+      await store.login({
+        token: 'dummy-token',
+        userId: 'guest-user',
+        userInfo: { name: 'Guest User' }
+      });
+      navigate('/dashboard');
     } catch (error) {
-      setError('Login failed. Please try again.');
+      setError('登录失败');
       console.error('Login error:', error);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   return (
     <div className="login-container">
       <div className="login-box">
-        <h2>Welcome to DNA Analysis</h2>
-        <p>Please log in to continue</p>
+        <h2>AI健康检测平台</h2>
+        <p>欢迎使用智能健康检测系统</p>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && <div data-testid="error-message" className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <button 
             type="submit" 
+            data-testid="login-button"
             className="login-button"
             disabled={isLoading}
           >
-            {isLoading ? 'Logging in...' : 'Continue as Guest'}
+            {isLoading ? (
+              <div data-testid="loading-state">
+                <span className="loading-spinner"></span>
+                登录中...
+              </div>
+            ) : '开始使用'}
           </button>
         </form>
       </div>
+
+      <style>{`
+        .loading-spinner {
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          margin-right: 8px;
+          border: 3px solid rgba(255, 255, 255, 0.3);
+          border-radius: 50%;
+          border-top-color: #fff;
+          animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

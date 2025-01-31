@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, Select, Alert, Spin, Typography, Space } from 'antd';
-import { api } from '../services/api';
-
-const { Title, Text } = Typography;
-const { Option } = Select;
+import './HealthAssistantComponent.css';
 
 const HealthAssistantComponent = () => {
   const [loading, setLoading] = useState(false);
@@ -110,52 +106,136 @@ const HealthAssistantComponent = () => {
   };
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Card title="AI 健康助手">
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Select
-            value={analysisType}
-            onChange={setAnalysisType}
-            style={{ width: '100%' }}
-          >
-            <Option value="health">健康咨询</Option>
-            <Option value="gene">基因测序</Option>
-            <Option value="early_screening">早期筛查</Option>
-          </Select>
+    <div className="health-assistant" role="main">
+      <header className="assistant-header" role="banner">
+        <h1 className="assistant-title" role="heading" aria-level="1">AI健康助手</h1>
+        <p className="assistant-description" role="contentinfo">
+          基于DeepSeek AI的智能健康分析系统，为您提供专业的健康评估和个性化建议
+        </p>
+      </header>
 
-          <Input.TextArea
-            rows={6}
+      <form className="analysis-form" role="form" aria-label="健康数据分析表单" onSubmit={(e) => { e.preventDefault(); handleAnalysis(); }}>
+        <div className="form-group" role="group" aria-labelledby="analysis-type-label">
+          <label id="analysis-type-label" className="form-label">分析类型</label>
+          <select
+            data-testid="analysis-type"
+            className="form-select"
+            value={analysisType}
+            onChange={(e) => setAnalysisType(e.target.value)}
+            aria-label="分析类型"
+            aria-required="true"
+            tabIndex="0"
+          >
+            <option value="health">健康咨询</option>
+            <option value="gene">基因测序</option>
+            <option value="early_screening">早期筛查</option>
+          </select>
+        </div>
+
+        <div className="form-group" role="group" aria-labelledby="health-data-label">
+          <label id="health-data-label" className="form-label">健康数据</label>
+          <textarea
+            data-testid="analysis-input"
+            className="form-textarea"
             value={inputData}
             onChange={(e) => setInputData(e.target.value)}
             placeholder="请输入您的健康数据进行分析..."
+            required
+            aria-required="true"
+            aria-invalid={!inputData.trim()}
+            tabIndex="0"
           />
+        </div>
 
-          <Button
-            type="primary"
-            onClick={handleAnalysis}
-            loading={loading}
-            block
+        <button
+          type="submit"
+          data-testid="submit-analysis"
+          className="submit-button"
+          disabled={loading || !inputData.trim()}
+          aria-disabled={loading || !inputData.trim()}
+          aria-busy={loading}
+          tabIndex="0"
+        >
+          {loading ? (
+            <span data-testid="loading-state" role="status" aria-live="polite">分析中...</span>
+          ) : '开始分析'}
+        </button>
+
+        {error && (
+          <div 
+            data-testid="error-message" 
+            className="error-message" 
+            role="alert" 
+            aria-live="assertive"
           >
-            开始分析
-          </Button>
+            {error}
+            <button 
+              onClick={handleAnalysis} 
+              data-testid="retry-button"
+              aria-label="重试分析"
+              tabIndex="0"
+            >
+              重试
+            </button>
+          </div>
+        )}
+      </form>
 
-          {error && (
-            <Alert type="error" message={error} />
+      {result && (
+        <div data-testid="analysis-result" className="results-container" role="region" aria-label="分析结果">
+          <div className="result-card" role="region" aria-labelledby="summary-heading">
+            <h3 id="summary-heading" role="heading" aria-level="3">分析总结</h3>
+            <p>{result.summary}</p>
+          </div>
+
+          {result.metrics && (
+            <div className="result-card" role="region" aria-labelledby="metrics-heading">
+              <h3 id="metrics-heading" role="heading" aria-level="3">健康指标</h3>
+              <div data-testid="health-metrics" className="metrics-grid" role="list">
+                {Object.entries(result.metrics).map(([key, value]) => (
+                  <div key={key} className="metric-item" role="listitem" data-testid={`metric-${key}`}>
+                    <div className="metric-label">{key}</div>
+                    <div className="metric-value">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
-          {result && (
-            <>
-              <Card size="small" title="分析总结">
-                <Text>{result.summary}</Text>
-              </Card>
-              {renderMetrics(result.metrics)}
-              {renderRiskFactors(result.riskFactors)}
-              {renderRecommendations(result.recommendations)}
-            </>
+          {result.riskFactors?.length > 0 && (
+            <div className="result-card" role="region" aria-labelledby="risks-heading">
+              <h3 id="risks-heading" role="heading" aria-level="3">风险因素</h3>
+              <ul data-testid="risk-factors" className="risk-factors-list" role="list">
+                {result.riskFactors.map((risk, index) => (
+                  <li key={index} role="listitem" data-testid={`risk-${index}`}>
+                    <strong>{risk.description}</strong>
+                    <div className="risk-severity" aria-label={`严重程度: ${risk.severity}, 类型: ${risk.type}`}>
+                      严重程度: {risk.severity} | 类型: {risk.type}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-        </Space>
-      </Card>
-    </Space>
+
+          {result.recommendations?.length > 0 && (
+            <div className="result-card" role="region" aria-labelledby="recommendations-heading">
+              <h3 id="recommendations-heading" role="heading" aria-level="3">健康建议</h3>
+              <ul data-testid="recommendations" className="recommendations-list" role="list">
+                {result.recommendations.map((rec, index) => (
+                  <li key={index} role="listitem" data-testid={`recommendation-${index}`}>
+                    <strong>{rec.suggestion}</strong>
+                    <div className="recommendation-priority" aria-label={`优先级: ${rec.priority}, 类别: ${rec.category}`}>
+                      优先级: {rec.priority} | 类别: {rec.category}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

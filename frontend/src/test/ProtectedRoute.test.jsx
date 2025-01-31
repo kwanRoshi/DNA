@@ -1,74 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from './utils/test-utils';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from '../utils/ProtectedRoute';
-import useStore from '../utils/store';
+import { mockStore } from './setup';
 
-vi.mock('../utils/store');
-
-const TestComponent = () => <div>Protected Content</div>;
-const LoginPage = () => <div>Login Page</div>;
-
-const renderWithRouter = (ui, { route = '/' } = {}) => {
-  return render(
-    <MemoryRouter initialEntries={[route]}>
-      <Routes>
-        <Route
-          path="/protected"
-          element={
-            <ProtectedRoute>
-              <TestComponent />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<div>Home</div>} />
-      </Routes>
-    </MemoryRouter>
-  );
-};
+const TestComponent = () => <div data-testid="protected-content">Protected Content</div>;
+const LoginPage = () => <div data-testid="login-page">Login Page</div>;
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    localStorage.clear();
     vi.clearAllMocks();
+    mockStore.reset();
   });
 
-  it('redirects to login when no wallet address', async () => {
-    useStore.mockImplementation(() => ({
-      walletAddress: null,
-    }));
-
-    renderWithRouter(null, { route: '/protected' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Login Page')).toBeInTheDocument();
-    });
+  it('redirects to login when not authenticated', () => {
+    mockStore.getState.mockReturnValue({ token: null });
+    const { getByTestId } = render(
+      <Routes>
+        <Route path="/" element={<ProtectedRoute><TestComponent /></ProtectedRoute>} />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+    );
+    expect(getByTestId('login-page')).toBeInTheDocument();
   });
 
-  it('redirects to login when no token', async () => {
-    useStore.mockImplementation(() => ({
-      walletAddress: '0x123',
-    }));
-
-    renderWithRouter(null, { route: '/protected' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Login Page')).toBeInTheDocument();
-    });
-  });
-
-  it('renders protected content when authenticated', async () => {
-    useStore.mockImplementation(() => ({
-      walletAddress: '0x123',
-    }));
-    localStorage.setItem('token', 'valid_token');
-
-    renderWithRouter(null, { route: '/protected' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Protected Content')).toBeInTheDocument();
-    });
+  it('renders protected content when authenticated', () => {
+    mockStore.getState.mockReturnValue({ token: 'test-token' });
+    const { getByTestId } = render(
+      <Routes>
+        <Route path="/" element={<ProtectedRoute><TestComponent /></ProtectedRoute>} />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+    );
+    expect(getByTestId('protected-content')).toBeInTheDocument();
   });
 });

@@ -1,80 +1,62 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { render, TEST_IDS } from './utils/test-utils';
+import { describe, it, expect, vi } from 'vitest';
+import { render, act } from './utils/test-utils';
 import LoginComponent from '../components/LoginComponent';
-import useStore from '../utils/store';
-import * as api from '../services/api';
-
-vi.mock('../services/api');
-vi.mock('../utils/store');
-vi.mock('ethers');
+import { mockStore, mockNavigate } from './setup';
 
 describe('LoginComponent', () => {
-  beforeEach(() => {
-    useStore.mockImplementation(() => ({
-      setWalletAddress: vi.fn(),
-      walletAddress: null
-    }));
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await mockStore.reset();
   });
 
-  it('renders connect wallet button', async () => {
-    render(<LoginComponent />);
-    await waitFor(() => {
-      expect(screen.getByText('连接钱包')).toBeInTheDocument();
-    });
+  it('renders welcome message and login button', () => {
+    const { getByText, getByTestId } = render(<LoginComponent />);
+    expect(getByText('AI健康检测平台')).toBeInTheDocument();
+    expect(getByText('欢迎使用智能健康检测系统')).toBeInTheDocument();
+    expect(getByTestId('login-button')).toHaveTextContent('开始使用');
   });
 
-  it('handles wallet connection success', async () => {
-    const mockAddress = '0x123';
-    const mockToken = 'test_token';
-    const setWalletAddress = vi.fn();
+  it('handles successful login', async () => {
+    const { getByTestId } = render(<LoginComponent />);
+    const button = getByTestId('login-button');
     
-    window.ethereum.request.mockResolvedValueOnce([mockAddress]);
-    useStore.mockImplementation(() => ({
-      setWalletAddress,
-      walletAddress: null
-    }));
-    api.loginWithWallet.mockResolvedValueOnce({ token: mockToken });
-
-    render(<LoginComponent />);
-
-    const connectButton = screen.getByText('连接钱包');
-    await fireEvent.click(connectButton);
-
-    await waitFor(() => {
-      expect(window.ethereum.request).toHaveBeenCalledWith({
-        method: 'eth_requestAccounts'
-      });
-      expect(api.loginWithWallet).toHaveBeenCalledWith(mockAddress);
-      expect(setWalletAddress).toHaveBeenCalledWith(mockAddress);
-      expect(localStorage.setItem).toHaveBeenCalledWith('token', mockToken);
+    await act(async () => {
+      await mockStore.setState({ token: null });
+      await button.click();
     });
+    
+    expect(mockStore.login).toHaveBeenCalledWith({
+      token: 'dummy-token',
+      userId: 'guest-user',
+      userInfo: { name: 'Guest User' }
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('handles wallet connection error', async () => {
-    window.ethereum.request.mockRejectedValueOnce(new Error('User rejected'));
-
-    render(<LoginComponent />);
-
-    const connectButton = screen.getByText('连接钱包');
-    await fireEvent.click(connectButton);
-
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('连接失败: User rejected');
+  it('shows loading state during login', async () => {
+    const { getByTestId } = render(<LoginComponent />);
+    const button = getByTestId('login-button');
+    
+    let loadingState;
+    await act(async () => {
+      await mockStore.setState({ token: null });
+      await button.click();
+      loadingState = getByTestId('loading-state');
     });
+    
+    expect(loadingState).toBeInTheDocument();
   });
 
-  it('handles no metamask installed', async () => {
-    const originalEthereum = window.ethereum;
-    window.ethereum = undefined;
-
-    render(<LoginComponent />);
-
-    await waitFor(() => {
-      expect(screen.getByText('请先安装OKX钱包')).toBeInTheDocument();
+  it('handles login error', async () => {
+    mockStore.login.mockRejectedValueOnce(new Error('登录失败'));
+    const { getByTestId } = render(<LoginComponent />);
+    const button = getByTestId('login-button');
+    
+    await act(async () => {
+      await mockStore.setState({ token: null });
+      await button.click();
     });
-
-    window.ethereum = originalEthereum;
+    
+    expect(getByTestId('error-message')).toHaveTextContent('登录失败');
   });
 });

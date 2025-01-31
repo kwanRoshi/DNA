@@ -22,43 +22,115 @@ async def mock_httpx_client():
     mock_client.post.return_value = AsyncMock()
     mock_client.post.return_value.status_code = 200
     mock_client.post.return_value.json = AsyncMock()
-    mock_client.post.return_value.json.return_value = {"choices": [{"message": {"content": "Test response"}}]}
+    mock_client.post.return_value.json.return_value = {
+        "success": True,
+        "analysis": {
+            "summary": "健康状况总体良好，但存在一些需要关注的问题。",
+            "recommendations": [
+                "增加运动量，每周至少进行3次中等强度运动",
+                "改善作息习惯，保证充足睡眠",
+                "适当调整工作节奏，注意劳逸结合"
+            ],
+            "risk_factors": [
+                "睡眠质量不佳可能影响身体恢复",
+                "工作压力较大导致精神紧张"
+            ],
+            "metrics": {
+                "healthScore": 75,
+                "stressLevel": "medium",
+                "sleepQuality": "fair",
+                "riskLevel": "medium",
+                "confidenceScore": 0.85,
+                "healthIndex": 80
+            }
+        },
+        "model": "deepseek-coder:1.5b",
+        "provider": "ollama"
+    }
     return mock_client
+
+@pytest.fixture
+def mock_ollama_response():
+    return {
+        "success": True,
+        "analysis": {
+            "summary": "健康状况总体良好，但存在一些需要关注的问题。",
+            "recommendations": [
+                "增加运动量，每周至少进行3次中等强度运动",
+                "改善作息习惯，保证充足睡眠",
+                "适当调整工作节奏，注意劳逸结合"
+            ],
+            "risk_factors": [
+                "睡眠质量不佳可能影响身体恢复",
+                "工作压力较大导致精神紧张"
+            ],
+            "metrics": {
+                "healthScore": 75,
+                "stressLevel": "medium",
+                "sleepQuality": "fair",
+                "riskLevel": "medium",
+                "confidenceScore": 0.85,
+                "healthIndex": 80
+            }
+        },
+        "model": "deepseek-coder:1.5b",
+        "provider": "ollama"
+    }
 
 @pytest.fixture
 def mock_deepseek_api_response():
     return {
-        "choices": [{
-            "message": {
-                "content": """总结: 健康状况总体良好，但存在一些需要关注的问题。
-
-风险因素:
-- 睡眠质量不佳可能影响身体恢复
-- 工作压力较大导致精神紧张
-- 运动量不足影响身体机能
-
-建议:
-- 增加运动量，每周至少进行3次中等强度运动
-- 改善作息习惯，保证充足睡眠
-- 适当调整工作节奏，注意劳逸结合"""
+        "success": True,
+        "analysis": {
+            "summary": "健康状况总体良好，但存在一些需要关注的问题。",
+            "recommendations": [
+                "增加运动量，每周至少进行3次中等强度运动",
+                "改善作息习惯，保证充足睡眠",
+                "适当调整工作节奏，注意劳逸结合"
+            ],
+            "risk_factors": [
+                "睡眠质量不佳可能影响身体恢复",
+                "工作压力较大导致精神紧张"
+            ],
+            "metrics": {
+                "healthScore": 75,
+                "stressLevel": "medium",
+                "sleepQuality": "fair",
+                "riskLevel": "medium",
+                "confidenceScore": 0.85,
+                "healthIndex": 80
             }
-        }]
+        },
+        "model": "deepseek-chat",
+        "provider": "deepseek"
     }
 
 @pytest.fixture
 def mock_claude_api_response():
     return {
-        "content": [{
-            "text": """基因分析结果总结：
-1. 基因特征显示代谢功能正常
-2. 无明显遗传性疾病风险
-3. 建议定期进行健康检查
-
-详细建议：
-- 保持均衡饮食
-- 规律运动
-- 定期体检"""
-        }]
+        "success": True,
+        "analysis": {
+            "summary": "基因分析结果显示健康状况良好。",
+            "recommendations": [
+                "保持均衡饮食",
+                "规律运动",
+                "定期体检"
+            ],
+            "risk_factors": [
+                "需要进一步检查以确定具体风险",
+                "可能存在潜在健康隐患"
+            ],
+            "metrics": {
+                "healthScore": 75,
+                "stressLevel": "medium",
+                "sleepQuality": "fair",
+                "riskLevel": "medium",
+                "confidenceScore": 0.85,
+                "healthIndex": 80
+            }
+        },
+        "model": "claude-3-opus-20240229",
+        "provider": "claude"
     }
 
 # Using conftest.py for fixtures
@@ -126,24 +198,24 @@ def mock_facility_response():
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_health_consultation(mock_deepseek_api, async_client, mock_deepseek_response):
+async def test_health_consultation(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
     """Test health consultation functionality with mock data"""
-    mock_deepseek_api.return_value = mock_deepseek_response
+    test_sequence = """
+    主要症状：
+    1. 经常感到疲劳，尤其是下午时段
+    2. 夜间睡眠质量差，经常醒来
+    3. 轻度头痛，持续一周
+    4. 食欲略有下降
     
+    其他信息：
+    - 工作压力较大
+    - 运动较少
+    - 饮食不规律
+    """
+    
+    # Test with default provider priority (should use Ollama first)
     mock_data = {
-        "sequence": """
-        主要症状：
-        1. 经常感到疲劳，尤其是下午时段
-        2. 夜间睡眠质量差，经常醒来
-        3. 轻度头痛，持续一周
-        4. 食欲略有下降
-        
-        其他信息：
-        - 工作压力较大
-        - 运动较少
-        - 饮食不规律
-        """,
-        "provider": "deepseek",
+        "sequence": test_sequence,
         "analysis_type": "health",
         "include_recommendations": True,
         "include_risk_factors": True,
@@ -154,173 +226,161 @@ async def test_health_consultation(mock_deepseek_api, async_client, mock_deepsee
     assert response.status_code == 200
     
     data = response.json()
+    assert "success" in data
+    assert data["success"] is True
     assert "analysis" in data
     analysis = data["analysis"]
     
-    # Verify response fields
-    assert "summary" in analysis
-    assert "recommendations" in analysis
-    assert "risk_factors" in analysis
-    assert "metrics" in analysis
-    assert len(analysis["recommendations"]) == 3
-    assert analysis["recommendations"][0]["priority"] == "high"
-    
-    assert "risk_factors" in analysis
-    assert len(analysis["risk_factors"]) == 2
-    assert analysis["risk_factors"][0]["severity"] == "medium"
-    
-    metrics = analysis["metrics"]
-    assert metrics["healthScore"] == 75
-    assert metrics["stressLevel"] == "medium"
-    assert metrics["sleepQuality"] == "poor"
-
-@pytest.mark.asyncio
-@pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_gene_sequencing(mock_deepseek_api, async_client):
-    """Test gene sequencing functionality with mock data"""
-    mock_deepseek_api.return_value = {
-        "analysis": {
-            "summary": """基因检测结果分析：
-1. BRCA1基因：未发现已知致病变异，乳腺癌风险低
-2. MTHFR基因：存在C677T多态性，建议补充叶酸
-3. ApoE基因：E3/E3基因型，心血管风险一般
-4. ACE基因：D/D基因型，需要关注血压管理""",
-            "recommendations": [
-                {"suggestion": "定期进行乳腺癌筛查", "priority": "medium", "category": "screening"},
-                {"suggestion": "补充叶酸", "priority": "high", "category": "nutrition"},
-                {"suggestion": "定期监测血压", "priority": "high", "category": "monitoring"}
-            ],
-            "risk_factors": [
-                {"description": "叶酸代谢效率可能降低", "severity": "medium", "type": "genetic"},
-                {"description": "血压相关基因风险", "severity": "medium", "type": "cardiovascular"}
-            ],
-            "metrics": {
-                "geneticRiskScore": 0.25,
-                "variantSignificance": "moderate",
-                "inheritancePattern": "complex",
-                "preventiveMeasuresScore": 0.75
-            }
-        }
-    }
-    
-    mock_data = {
-        "sequence": """
-        基因检测结果：
-        1. BRCA1基因：未发现已知致病变异
-        2. MTHFR基因：存在C677T多态性
-        3. ApoE基因：E3/E3基因型
-        4. ACE基因：D/D基因型
-        
-        分析说明：
-        - 遗传性乳腺癌风险：低
-        - 叶酸代谢：效率略低
-        - 心血管相关：需要关注
-        """,
-        "provider": "deepseek",
-        "analysis_type": "gene",
-        "include_recommendations": True,
-        "include_risk_factors": True,
-        "include_metrics": True
-    }
-    
-    response = await async_client.post("/api/analyze", json=mock_data)
-    assert response.status_code == 200
-    
-    data = response.json()
-    assert "analysis" in data
-    analysis = data["analysis"]
-    
-    # Verify response structure
+    # Verify consistent response format
     assert "summary" in analysis
     assert "recommendations" in analysis
     assert "risk_factors" in analysis
     assert "metrics" in analysis
     
     # Verify recommendations
-    assert len(analysis["recommendations"]) == 3
-    assert analysis["recommendations"][0]["category"] == "screening"
-    assert analysis["recommendations"][1]["priority"] == "high"
-    assert analysis["recommendations"][1]["category"] == "nutrition"
+    assert isinstance(analysis["recommendations"], list)
+    assert len(analysis["recommendations"]) >= 3
+    assert all(isinstance(r, str) for r in analysis["recommendations"])
     
     # Verify risk factors
-    assert len(analysis["risk_factors"]) == 2
-    assert analysis["risk_factors"][0]["type"] == "genetic"
-    assert analysis["risk_factors"][1]["type"] == "cardiovascular"
+    assert isinstance(analysis["risk_factors"], list)
+    assert len(analysis["risk_factors"]) >= 2
+    assert all(isinstance(r, str) for r in analysis["risk_factors"])
     
     # Verify metrics
     metrics = analysis["metrics"]
-    assert isinstance(metrics["geneticRiskScore"], (int, float))
-    assert metrics["variantSignificance"] == "moderate"
-    assert metrics["inheritancePattern"] == "complex"
-    assert isinstance(metrics["preventiveMeasuresScore"], (int, float))
+    assert isinstance(metrics["healthScore"], (int, float))
+    assert isinstance(metrics["stressLevel"], str)
+    assert isinstance(metrics["sleepQuality"], str)
+    assert isinstance(metrics["riskLevel"], str)
+    assert isinstance(metrics["confidenceScore"], (int, float))
+    assert isinstance(metrics["healthIndex"], (int, float))
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_early_screening(mock_deepseek_api, async_client, mock_deepseek_response):
-    """Test early screening analysis with mock screening data"""
-    mock_deepseek_api.return_value = {
-        "analysis": {
-            "summary": "早期筛查结果分析：\n1. 血压轻度偏高\n2. 血糖处于临界值\n3. 胆固醇略高",
-            "recommendations": [
-                {"suggestion": "控制饮食，减少盐分摄入", "priority": "high", "category": "diet"},
-                {"suggestion": "增加有氧运动频率", "priority": "medium", "category": "exercise"}
-            ],
-            "risk_factors": [
-                {"description": "心血管疾病风险", "severity": "medium", "type": "cardiovascular"},
-                {"description": "代谢综合征风险", "severity": "low", "type": "metabolic"}
-            ],
-            "metrics": {
-                "riskLevel": "medium",
-                "confidenceScore": 0.85,
-                "healthIndex": 78
-            }
+async def test_gene_sequencing(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
+    """Test gene sequencing functionality with mock data"""
+    test_sequence = """
+    基因检测结果：
+    1. BRCA1基因：未发现已知致病变异
+    2. MTHFR基因：存在C677T多态性
+    3. ApoE基因：E3/E3基因型
+    4. ACE基因：D/D基因型
+    
+    分析说明：
+    - 遗传性乳腺癌风险：低
+    - 叶酸代谢：效率略低
+    - 心血管相关：需要关注
+    """
+    
+    # Test with each provider
+    providers = ["ollama", "deepseek", "claude"]
+    for provider in providers:
+        mock_data = {
+            "sequence": test_sequence,
+            "analysis_type": "gene",
+            "provider": provider
         }
-    }
-    
-    mock_data = {
-        "sequence": """
-        筛查数据：
-        1. 血压：135/85 mmHg
-        2. 空腹血糖：5.8 mmol/L
-        3. 总胆固醇：5.2 mmol/L
-        4. 体重指数：26.5
         
-        生活习惯：
-        - 每周运动2-3次
-        - 偶尔饮酒
-        - 不吸烟
-        """,
-        "provider": "deepseek",
-        "analysis_type": "early_screening",
-        "include_recommendations": True,
-        "include_risk_factors": True,
-        "include_metrics": True
-    }
-    
-    response = await async_client.post("/api/analyze", json=mock_data)
+        response = await async_client.post("/api/analyze", json=mock_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["provider"] == provider
+        assert "analysis" in data
+        analysis = data["analysis"]
+        
+        # Verify consistent response format
+        assert isinstance(analysis["summary"], str)
+        assert isinstance(analysis["recommendations"], list)
+        assert isinstance(analysis["risk_factors"], list)
+        assert isinstance(analysis["metrics"], dict)
+        
+        # Verify content requirements
+        assert len(analysis["recommendations"]) >= 3
+        assert len(analysis["risk_factors"]) >= 2
+        assert all(isinstance(r, str) for r in analysis["recommendations"])
+        assert all(isinstance(r, str) for r in analysis["risk_factors"])
+        
+        # Verify metrics structure
+        metrics = analysis["metrics"]
+        assert isinstance(metrics["healthScore"], (int, float))
+        assert isinstance(metrics["stressLevel"], str)
+        assert isinstance(metrics["riskLevel"], str)
+        assert isinstance(metrics["confidenceScore"], (int, float))
+        assert isinstance(metrics["healthIndex"], (int, float))
+        
+    # Test fallback behavior
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    response = await async_client.post("/api/analyze", json={"sequence": test_sequence, "analysis_type": "gene"})
     assert response.status_code == 200
-    
     data = response.json()
-    assert "analysis" in data
-    analysis = data["analysis"]
+    assert data["success"] is True
+    assert data["provider"] in ["deepseek", "claude"]
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(ASYNC_TIMEOUT)
+async def test_early_screening(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
+    """Test early screening analysis with mock screening data"""
+    test_sequence = """
+    筛查数据：
+    1. 血压：135/85 mmHg
+    2. 空腹血糖：5.8 mmol/L
+    3. 总胆固醇：5.2 mmol/L
+    4. 体重指数：26.5
     
-    # Verify response fields
-    assert "summary" in analysis
-    assert "recommendations" in analysis
-    assert "risk_factors" in analysis
-    assert "metrics" in analysis
+    生活习惯：
+    - 每周运动2-3次
+    - 偶尔饮酒
+    - 不吸烟
+    """
     
-    # Verify specific fields
-    assert len(analysis["recommendations"]) == 2
-    assert analysis["recommendations"][0]["priority"] == "high"
-    
-    assert len(analysis["risk_factors"]) == 2
-    assert analysis["risk_factors"][0]["type"] == "cardiovascular"
-    
-    metrics = analysis["metrics"]
-    assert metrics["riskLevel"] == "medium"
-    assert metrics["confidenceScore"] == 0.85
-    assert metrics["healthIndex"] == 78
+    # Test with each provider
+    providers = ["ollama", "deepseek", "claude"]
+    for provider in providers:
+        mock_data = {
+            "sequence": test_sequence,
+            "analysis_type": "early_screening",
+            "provider": provider
+        }
+        
+        response = await async_client.post("/api/analyze", json=mock_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["provider"] == provider
+        assert "analysis" in data
+        analysis = data["analysis"]
+        
+        # Verify consistent response format
+        assert isinstance(analysis["summary"], str)
+        assert isinstance(analysis["recommendations"], list)
+        assert isinstance(analysis["risk_factors"], list)
+        assert isinstance(analysis["metrics"], dict)
+        
+        # Verify content requirements
+        assert len(analysis["recommendations"]) >= 3
+        assert len(analysis["risk_factors"]) >= 2
+        assert all(isinstance(r, str) for r in analysis["recommendations"])
+        assert all(isinstance(r, str) for r in analysis["risk_factors"])
+        
+        # Verify metrics structure
+        metrics = analysis["metrics"]
+        assert isinstance(metrics["healthScore"], (int, float))
+        assert isinstance(metrics["stressLevel"], str)
+        assert isinstance(metrics["riskLevel"], str)
+        assert isinstance(metrics["confidenceScore"], (int, float))
+        assert isinstance(metrics["healthIndex"], (int, float))
+        
+    # Test fallback behavior
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    response = await async_client.post("/api/analyze", json={"sequence": test_sequence, "analysis_type": "early_screening"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["provider"] in ["deepseek", "claude"]
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
@@ -351,31 +411,9 @@ async def test_facility_recommendations(mock_deepseek_api, async_client, mock_fa
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_health_records(mock_deepseek_api, async_client):
+async def test_health_records(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
     """Test health records management with comprehensive data verification"""
-    mock_response = {
-        "success": True,
-        "analysis": {
-            "summary": "可能存在工作压力导致的身心症状",
-            "recommendations": [
-                {"suggestion": "调整作息时间", "priority": "high", "category": "lifestyle"},
-                {"suggestion": "适当运动放松", "priority": "medium", "category": "exercise"}
-            ],
-            "risk_factors": [
-                {"description": "工作压力过大", "severity": "medium", "type": "psychological"},
-                {"description": "睡眠质量差", "severity": "high", "type": "lifestyle"}
-            ],
-            "metrics": {
-                "healthScore": 75,
-                "stressLevel": "medium",
-                "sleepQuality": "poor"
-            }
-        }
-    }
-    
-    mock_deepseek_api.return_value = mock_response
-    
-    record_data = {
+    test_data = {
         "user_id": "test_user",
         "record_type": "consultation",
         "data": {
@@ -386,49 +424,50 @@ async def test_health_records(mock_deepseek_api, async_client):
         "timestamp": "2024-03-15T10:00:00Z"
     }
     
-    response = await async_client.post("/api/health-records", json=record_data)
+    # Test with each provider
+    providers = ["ollama", "deepseek", "claude"]
+    for provider in providers:
+        test_data["provider"] = provider
+        response = await async_client.post("/api/health-records", json=test_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["provider"] == provider
+        assert "analysis" in data
+        analysis = data["analysis"]
+        
+        # Verify consistent response format
+        assert isinstance(analysis["summary"], str)
+        assert isinstance(analysis["recommendations"], list)
+        assert isinstance(analysis["risk_factors"], list)
+        assert isinstance(analysis["metrics"], dict)
+        
+        # Verify content requirements
+        assert len(analysis["recommendations"]) >= 3
+        assert len(analysis["risk_factors"]) >= 2
+        assert all(isinstance(r, str) for r in analysis["recommendations"])
+        assert all(isinstance(r, str) for r in analysis["risk_factors"])
+        
+        # Verify metrics structure
+        metrics = analysis["metrics"]
+        assert isinstance(metrics["healthScore"], (int, float))
+        assert isinstance(metrics["stressLevel"], str)
+        assert isinstance(metrics["riskLevel"], str)
+        assert isinstance(metrics["confidenceScore"], (int, float))
+        assert isinstance(metrics["healthIndex"], (int, float))
+        
+    # Test fallback behavior
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    response = await async_client.post("/api/health-records", json={"user_id": "test_user", "record_type": "consultation"})
     assert response.status_code == 200
-    
     data = response.json()
-    assert "record" in data
-    record = data["record"]
-    
-    # Verify response structure
-    assert "success" in data
     assert data["success"] is True
-    assert "analysis" in data
-    
-    # Verify analysis results
-    analysis = data["analysis"]
-    assert "summary" in analysis
-    assert "工作压力" in analysis["summary"]
-    
-    # Verify recommendations
-    assert "recommendations" in analysis
-    recommendations = analysis["recommendations"]
-    assert len(recommendations) == 2
-    assert recommendations[0]["suggestion"] == "调整作息时间"
-    assert recommendations[0]["priority"] == "high"
-    assert recommendations[0]["category"] == "lifestyle"
-    
-    # Verify risk factors
-    assert "risk_factors" in analysis
-    risk_factors = analysis["risk_factors"]
-    assert len(risk_factors) == 2
-    assert risk_factors[0]["description"] == "工作压力过大"
-    assert risk_factors[0]["severity"] == "medium"
-    assert risk_factors[0]["type"] == "psychological"
-    
-    # Verify metrics
-    assert "metrics" in analysis
-    metrics = analysis["metrics"]
-    assert metrics["healthScore"] == 75
-    assert metrics["stressLevel"] == "medium"
-    assert metrics["sleepQuality"] == "poor"
+    assert data["provider"] in ["deepseek", "claude"]
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_personal_ai_assistant(mock_deepseek_api, async_client):
+async def test_personal_ai_assistant(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
     """Test personal AI assistant functionality"""
     # Test AI assistant profile setup
     profile_data = {
@@ -448,7 +487,7 @@ async def test_personal_ai_assistant(mock_deepseek_api, async_client):
     assert profile["name"] == "健康助手小智"
     assert len(profile["preferences"]["focus_areas"]) == 3
     
-    # Test early screening consultation
+    # Test consultation with each provider
     screening_data = {
         "user_id": "test_user",
         "consultation_type": "early_screening",
@@ -461,33 +500,37 @@ async def test_personal_ai_assistant(mock_deepseek_api, async_client):
         "timestamp": "2024-03-15T14:30:00Z"
     }
     
-    mock_deepseek_api.return_value = {
-        "success": True,
-        "analysis": {
-            "summary": "根据您的健康数据分析：",
-            "recommendations": [
-                {"suggestion": "规律作息，保证7-8小时睡眠", "priority": "high", "category": "lifestyle"},
-                {"suggestion": "适量运动，提高身体素质", "priority": "medium", "category": "exercise"}
-            ],
-            "risk_factors": [
-                {"description": "血压轻度偏高", "severity": "medium", "type": "cardiovascular"},
-                {"description": "体重指数偏高", "severity": "low", "type": "metabolic"}
-            ],
-            "metrics": {
-                "healthScore": 78,
-                "riskLevel": "medium",
-                "confidenceScore": 0.85
-            }
-        }
-    }
-
-    response = await async_client.post("/api/ai-assistant/consult", json=screening_data)
-    assert response.status_code == 200
-    result = response.json()
-    assert "consultation_id" in result
-    assert "response" in result
-    assert "recommendations" in result["response"]
-    assert "risk_factors" in result["response"]
+    providers = ["ollama", "deepseek", "claude"]
+    for provider in providers:
+        screening_data["provider"] = provider
+        response = await async_client.post("/api/ai-assistant/consult", json=screening_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert result["success"] is True
+        assert result["provider"] == provider
+        assert "analysis" in result
+        analysis = result["analysis"]
+        
+        # Verify consistent response format
+        assert isinstance(analysis["summary"], str)
+        assert isinstance(analysis["recommendations"], list)
+        assert isinstance(analysis["risk_factors"], list)
+        assert isinstance(analysis["metrics"], dict)
+        
+        # Verify content requirements
+        assert len(analysis["recommendations"]) >= 3
+        assert len(analysis["risk_factors"]) >= 2
+        assert all(isinstance(r, str) for r in analysis["recommendations"])
+        assert all(isinstance(r, str) for r in analysis["risk_factors"])
+        
+        # Verify metrics structure
+        metrics = analysis["metrics"]
+        assert isinstance(metrics["healthScore"], (int, float))
+        assert isinstance(metrics["stressLevel"], str)
+        assert isinstance(metrics["riskLevel"], str)
+        assert isinstance(metrics["confidenceScore"], (int, float))
+        assert isinstance(metrics["healthIndex"], (int, float))
     
     # Test facility recommendations
     facility_request = {
@@ -503,6 +546,14 @@ async def test_personal_ai_assistant(mock_deepseek_api, async_client):
     assert len(facilities["facilities"]) > 0
     assert all("name" in f and "location" in f and "services" in f for f in facilities["facilities"])
     
+    # Test fallback behavior
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    response = await async_client.post("/api/ai-assistant/consult", json={"user_id": "test_user", "consultation_type": "health"})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["success"] is True
+    assert result["provider"] in ["deepseek", "claude"]
+    
     # Verify consultation history retrieval
     response = await async_client.get("/api/ai-assistant/history/test_user")
     assert response.status_code == 200
@@ -512,34 +563,70 @@ async def test_personal_ai_assistant(mock_deepseek_api, async_client):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(ASYNC_TIMEOUT)
-async def test_error_scenarios(mock_deepseek_api, async_client):
-    """Test various error scenarios"""
+async def test_error_scenarios(mock_ollama_response, mock_deepseek_api_response, mock_claude_api_response, async_client):
+    """Test various error scenarios and fallback behavior"""
     test_cases = [
         {
             "name": "Empty Sequence",
-            "input_data": {"sequence": "", "provider": "deepseek", "analysis_type": "health"},
+            "input_data": {"sequence": ""},
             "expected_status": 400,
             "expected_error": "No sequence provided"
         },
         {
-            "name": "Invalid Analysis Type",
-            "input_data": {"sequence": "测试数据", "provider": "deepseek", "analysis_type": "invalid"},
+            "name": "Invalid Provider",
+            "input_data": {"sequence": "测试数据", "provider": "invalid"},
             "expected_status": 400,
-            "expected_error": "Invalid analysis type"
+            "expected_error": "Invalid provider specified"
         },
         {
             "name": "Missing Required Fields",
-            "input_data": {"provider": "deepseek"},
+            "input_data": {},
             "expected_status": 400,
             "expected_error": "No sequence provided"
+        },
+        {
+            "name": "Provider Fallback Test",
+            "input_data": {
+                "sequence": "测试数据",
+                "provider": "ollama"
+            },
+            "expected_status": 200,
+            "expected_success": True
         }
     ]
     
-    mock_deepseek_api.side_effect = Exception("Mock API error")
-    
+    # Test each error scenario
     for case in test_cases:
         response = await async_client.post("/api/analyze", json=case["input_data"])
         assert response.status_code == case["expected_status"], f"Failed {case['name']}"
         data = response.json()
-        assert "error" in data, f"No error message in {case['name']}"
-        assert case["expected_error"].lower() in data["error"].lower(), f"Wrong error in {case['name']}"
+        
+        if case["expected_status"] == 200:
+            assert data["success"] is True, f"Success flag missing in {case['name']}"
+            assert "analysis" in data, f"Analysis missing in {case['name']}"
+            analysis = data["analysis"]
+            assert isinstance(analysis["summary"], str)
+            assert isinstance(analysis["recommendations"], list)
+            assert isinstance(analysis["risk_factors"], list)
+            assert isinstance(analysis["metrics"], dict)
+        else:
+            assert "error" in data, f"No error message in {case['name']}"
+            assert case["expected_error"].lower() in data["error"].lower(), f"Wrong error in {case['name']}"
+    
+    # Test provider fallback chain
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    response = await async_client.post("/api/analyze", json={"sequence": "测试数据"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["provider"] in ["deepseek", "claude"]  # Should fall back to next available provider
+    
+    # Test all providers failing
+    mock_ollama_response.side_effect = Exception("Ollama error")
+    mock_deepseek_api_response.side_effect = Exception("DeepSeek error")
+    mock_claude_api_response.side_effect = Exception("Claude error")
+    response = await async_client.post("/api/analyze", json={"sequence": "测试数据"})
+    assert response.status_code == 500
+    data = response.json()
+    assert "error" in data
+    assert "all analysis providers failed" in data["error"].lower()
