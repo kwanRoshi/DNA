@@ -76,13 +76,72 @@ cp .env.example .env
 cp deployment.env.example deployment.env
 ```
 
-#### Docker 部署
+#### 本地部署
 
-1. 确保 Docker 和 Docker Compose 已安装
-
-2. 一键启动所有服务：
+1. 一键安装所有依赖：
 ```bash
-docker-compose up --build
+chmod +x one_click_install.sh
+./one_click_install.sh
+```
+
+2. 启动服务：
+
+后端服务:
+```bash
+cd backend
+source venv/bin/activate
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
+
+前端服务:
+```bash
+cd frontend
+pnpm dev
+```
+
+系统使用本地 Ollama 模型 (deepseek-r1:1.5b) 作为主要 AI 引擎，DeepSeek API 和 Claude API 作为备用选项。
+
+### 示例分析
+
+以下是一个健康数据分析示例：
+
+```text
+姓名：张三
+年龄：45岁
+性别：男
+
+基本指标：
+血压：135/85
+血糖：5.8
+胆固醇：5.2
+BMI：24.5
+睡眠：每天6-7小时
+压力：中等偏高
+
+生活习惯：
+- 每周运动1-2次
+- 饮食不规律
+- 经常加班
+```
+
+系统会自动分析数据并提供建议：
+
+```json
+{
+  "analysis": {
+    "summary": "血压轻度偏高，其他指标在正常范围内。睡眠时间略短，工作压力较大。",
+    "recommendations": [
+      "建议增加运动频率至每周3-4次",
+      "保持规律作息，确保充足睡眠",
+      "注意饮食规律，控制盐分摄入"
+    ],
+    "risk_factors": [
+      "血压偏高需要关注",
+      "工作压力可能影响健康",
+      "运动量不足"
+    ]
+  }
+}
 ```
 
 ## 项目结构
