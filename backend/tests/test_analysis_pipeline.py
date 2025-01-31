@@ -32,8 +32,13 @@ def validate_health_metrics(metrics: Dict) -> None:
 
 @pytest.mark.timeout(180)
 @pytest.mark.asyncio
-async def test_health_analysis_pipeline(test_data_files, app_client: AsyncClient):
+async def test_health_analysis_pipeline(test_data_files, app_client: AsyncClient, monkeypatch):
     """Test the complete health analysis pipeline with real data."""
+    # Set required environment variables
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://localhost:11434")
+    monkeypatch.setenv("MODEL_FALLBACK_PRIORITY", "ollama,deepseek,claude")
+    monkeypatch.setenv("OLLAMA_MODEL", "deepseek-r1:1.5b")
+    monkeypatch.setenv("OLLAMA_ENABLED", "true")
 
     with patch('app.services.ollama_service.httpx.AsyncClient') as mock_ollama_client, \
          patch('app.services.deepseek_service.httpx.AsyncClient') as mock_deepseek_client, \

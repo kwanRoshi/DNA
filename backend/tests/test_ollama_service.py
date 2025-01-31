@@ -78,21 +78,21 @@ async def test_analyze_with_ollama_error_handling():
     
     # Test invalid input data
     invalid_data = "这不是有效的健康数据。没有任何指标。"
-    with patch('httpx.AsyncClient', new_callable=AsyncMock) as mock_client:
+    with patch('httpx.AsyncClient') as mock_client:
         mock_client_instance = AsyncMock()
-        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client.return_value.__aenter__.return_value = mock_client_instance
         
-        mock_get = AsyncMock()
-        mock_get.status_code = 200
-        mock_get.json.return_value = {"models": [{"name": "deepseek-r1:1.5b"}]}
-        mock_client_instance.get = AsyncMock(return_value=mock_get)
-
-        mock_post = AsyncMock()
-        mock_post.status_code = 500
-        mock_post.json.return_value = {"error": "No valid health indicators found"}
-        mock_client_instance.post = AsyncMock(return_value=mock_post)
+        # Mock the models list call
+        mock_client_instance.get.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={"models": [{"name": "deepseek-r1:1.5b"}]})
+        )
         
-        mock_client.return_value = mock_client_instance
+        # Mock the generation call
+        mock_client_instance.post.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={"response": "无法识别的数据"})
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await analyze_with_ollama(invalid_data)
