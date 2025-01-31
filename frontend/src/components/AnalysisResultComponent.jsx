@@ -28,7 +28,7 @@ const AnalysisResultComponent = ({ analysis }) => {
         }}
       >
         <Typography color="text.secondary">
-          No analysis results to display
+          暂无分析结果
         </Typography>
       </Box>
     );
@@ -36,22 +36,22 @@ const AnalysisResultComponent = ({ analysis }) => {
 
   const sections = [
     {
-      title: 'Health Analysis Summary',
+      title: '健康分析摘要',
       icon: <AssessmentIcon />,
       content: analysis.summary || 'No summary available'
     },
     {
-      title: 'Health Implications',
+      title: '健康影响',
       icon: <HealthAndSafetyIcon />,
       content: analysis.implications || 'No health implications available'
     },
     {
-      title: 'Recommendations',
+      title: '建议',
       icon: <RecommendIcon />,
       content: analysis.recommendations || 'No recommendations available'
     },
     {
-      title: 'Risk Factors',
+      title: '风险因素',
       icon: <WarningIcon />,
       content: analysis.risks || 'No risk factors identified'
     }
@@ -78,7 +78,7 @@ const AnalysisResultComponent = ({ analysis }) => {
             }} 
           />
           <Typography variant="h5" component="h2" gutterBottom>
-            Health Analysis Results
+            健康分析结果
           </Typography>
           <Divider sx={{ my: 2 }} />
         </Box>
@@ -130,4 +130,4 @@ const AnalysisResultComponent = ({ analysis }) => {
   );
 };
 
-export default AnalysisResultComponent; 
+export default AnalysisResultComponent;   

@@ -53,7 +53,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
     formData.append('provider', provider);
 
     try {
-      const response = await fetch('http://localhost:3000/api/analysis/analyze', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/analyze`, {
         method: 'POST',
         body: formData
       });
@@ -90,15 +90,15 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
         <Box sx={{ textAlign: 'center', mb: 2 }}>
           <HealthAndSafetyIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
           <Typography variant="h5" component="h1" gutterBottom>
-            Health Data Analysis
+            健康数据分析
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Upload a sequence file or paste your sequence below for health analysis
+            上传序列文件或在下方粘贴您的序列进行健康分析
           </Typography>
         </Box>
 
         <FormControl fullWidth>
-          <InputLabel>Analysis Provider</InputLabel>
+          <InputLabel>分析提供者</InputLabel>
           <Select
             value={provider}
             label="Analysis Provider"
@@ -115,7 +115,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           startIcon={<CloudUploadIcon />}
           sx={{ mt: 2 }}
         >
-          Upload Sequence File
+          上传序列文件
           <input
             type="file"
             hidden
@@ -166,7 +166,7 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
           {isLoading ? (
             <CircularProgress size={24} color="inherit" />
           ) : (
-            'Analyze Sequence'
+            '开始分析'
           )}
         </Button>
       </Stack>
@@ -174,4 +174,4 @@ const DataUploadComponent = ({ onAnalysisComplete }) => {
   );
 };
 
-export default DataUploadComponent; 
+export default DataUploadComponent;  
