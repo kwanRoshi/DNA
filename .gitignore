@@ -36,3 +36,9 @@ yarn-error.log*
 .Spotlight-V100
 .Trashes __pycache__/
 *.pyc
+# Environment and secrets
+*.env
+.env
+.env.*
+deployment.env
+

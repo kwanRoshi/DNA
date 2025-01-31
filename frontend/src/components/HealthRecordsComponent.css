@@ -1,0 +1,202 @@
+.health-records {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.records-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.records-title {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.records-description {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.record-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: transform 0.2s;
+}
+
+.record-card:hover {
+  transform: translateY(-4px);
+}
+
+.record-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.record-icon {
+  font-size: 2rem;
+  margin-right: 1rem;
+}
+
+.record-info h3 {
+  margin: 0;
+  color: #333;
+}
+
+.record-date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.record-content {
+  margin-bottom: 1.5rem;
+}
+
+.record-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.metric-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.record-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.action-button {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-button {
+  background: #007bff;
+  color: white;
+}
+
+.view-button:hover {
+  background: #0056b3;
+}
+
+.share-button {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.share-button:hover {
+  background: #dee2e6;
+}
+
+.timeline {
+  margin-top: 3rem;
+}
+
+.timeline-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.timeline-title {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-description {
+  color: #666;
+}
+
+.timeline-items {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline-items::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #dee2e6;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 0.5rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #007bff;
+  border: 2px solid #fff;
+}
+
+.timeline-date {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .records-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .record-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .record-actions {
+    flex-direction: column;
+  }
+}

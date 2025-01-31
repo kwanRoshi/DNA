@@ -1,16 +1,65 @@
 import { useState, useEffect } from 'react';
 import { healthData } from '../services/api';
+import store from '../utils/store';
+
+const useStore = () => {
+  const {
+    healthData,
+    analysisResult,
+    isLoading,
+    setHealthData,
+    setAnalysisResult,
+    setLoading,
+    setError
+  } = store((state) => ({
+    healthData: state.healthData,
+    analysisResult: state.analysisResult,
+    isLoading: state.isLoading,
+    setHealthData: state.setHealthData,
+    setAnalysisResult: state.setAnalysisResult,
+    setLoading: state.setLoading,
+    setError: state.setError
+  }));
+
+  return {
+    healthData,
+    analysisResult,
+    isLoading,
+    setHealthData,
+    setAnalysisResult,
+    setLoading,
+    setError
+  };
+};
 import './AIResponseComponent.css';
 
 const AIResponseComponent = () => {
+  const { healthData: storeHealthData, analysisResult, isLoading } = useStore();
   const [analysisResults, setAnalysisResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadAnalysisHistory();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        if (analysisResult?.analysis) {
+          setAnalysisResults([{
+            timestamp: Date.now(),
+            analysis: analysisResult.analysis
+          }]);
+        } else {
+          await loadAnalysisHistory();
+        }
+      } catch (err) {
+        setError('加载分析历史失败');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // 监听新的分析结果
+    loadData();
+
     const handleNewAnalysis = (event) => {
       const newAnalysis = event.detail;
       setAnalysisResults(prev => [newAnalysis, ...prev]);
@@ -25,15 +74,19 @@ const AIResponseComponent = () => {
 
   const loadAnalysisHistory = async () => {
     try {
-      setIsLoading(true);
       setError('');
       const response = await healthData.getHistory();
-      setAnalysisResults(response.history || []);
+      if (response?.history) {
+        setAnalysisResults(response.history);
+      } else if (analysisResult?.analysis) {
+        setAnalysisResults([{
+          timestamp: Date.now(),
+          analysis: analysisResult.analysis
+        }]);
+      }
     } catch (err) {
       setError('加载分析历史失败');
       console.error('加载分析历史失败:', err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -129,46 +182,53 @@ const AIResponseComponent = () => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="ai-response-container card">
-        <h3>分析结果</h3>
-        <div className="loading-container">
+  const renderContent = () => {
+    if (loading || isLoading) {
+      return (
+        <div className="loading-container" data-testid="loading-state">
           <span className="loading"></span>
-          <p>加载中...</p>
+          <p>正在生成分析报告...</p>
         </div>
+      );
+    }
+
+    if (error) {
+      return <div className="error" data-testid="error-message">{error}</div>;
+    }
+
+    if (!analysisResults || analysisResults.length === 0) {
+      return <p className="no-results" data-testid="no-data-message">请先上传健康数据文件</p>;
+    }
+
+    return (
+      <div className="analysis-list" data-testid="analysis-result">
+        {analysisResults.map((analysis, index) => (
+          <div key={index} className="analysis-card">
+            <div className="analysis-header">
+              <span className="analysis-time">
+                {formatDate(analysis.timestamp || Date.now())}
+              </span>
+              {analysis.fileInfo && (
+                <span className="file-name">
+                  文件：{analysis.fileInfo.fileName}
+                </span>
+              )}
+            </div>
+            <div className="analysis-content" data-testid="analysis-content">
+              {typeof analysis === 'object' && analysis.analysis ? 
+                renderAnalysisResult(analysis.analysis) :
+                renderAnalysisResult(analysis)}
+            </div>
+          </div>
+        ))}
       </div>
     );
-  }
+  };
 
   return (
     <div className="ai-response-container card">
       <h3>分析结果</h3>
-      {error && <div className="error">{error}</div>}
-      
-      <div className="analysis-list">
-        {analysisResults.length === 0 ? (
-          <p className="no-results">暂无分析结果</p>
-        ) : (
-          analysisResults.map((analysis, index) => (
-            <div key={index} className="analysis-card">
-              <div className="analysis-header">
-                <span className="analysis-time">
-                  {formatDate(analysis.timestamp)}
-                </span>
-                {analysis.fileInfo && (
-                  <span className="file-name">
-                    文件：{analysis.fileInfo.fileName}
-                  </span>
-                )}
-              </div>
-              <div className="analysis-content">
-                {renderAnalysisResult(analysis.result)}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {renderContent()}
 
       {analysisResults.length > 0 && (
         <button 

@@ -134,6 +134,7 @@ const DataFormComponent = () => {
             accept=".txt"
             style={{ display: 'none' }}
             disabled={isLoading}
+            data-testid="file-input"
           />
           {isLoading ? (
             <div className="upload-progress">
@@ -157,12 +158,13 @@ const DataFormComponent = () => {
             </div>
           )}
         </div>
-        {error && <div className="error">{error}</div>}
-        {success && <div className="success">{success}</div>}
+        {error && <div className="error" data-testid="error-message">{error}</div>}
+        {success && <div className="success" data-testid="success-message">{success}</div>}
         <button 
           type="submit" 
           className="button" 
           disabled={!file || isLoading}
+          data-testid="submit-button"
         >
           {isLoading ? (
             <>

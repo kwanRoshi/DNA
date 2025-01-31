@@ -1,6 +1,6 @@
 # API Configuration
-DEEPSEEK_API_KEY = 'your_deepseek_api_key'
-CLAUDE_API_KEY = 'your_claude_api_key'
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
+CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', '')
 
 # Database Configuration
 MONGODB_URL = 'mongodb://mongodb:27017'

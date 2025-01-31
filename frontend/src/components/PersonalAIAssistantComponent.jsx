@@ -1,234 +1,147 @@
 import React, { useState } from 'react';
-import { Card, Tabs, Form, Input, Button, Avatar, List, Tag, Space, Typography, Alert, Progress } from 'antd';
-import { UserOutlined, RobotOutlined, HistoryOutlined, SettingOutlined } from '@ant-design/icons';
+import './PersonalAIAssistantComponent.css';
+import useStore from '../utils/store';
 
-const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
+const featureDescriptions = {
+  '智能诊断': '基于DeepSeek AI的智能症状分析和健康建议',
+  '基因解读': '专业的基因测序数据分析和健康风险评估',
+  '健康追踪': '全面的健康数据追踪和趋势分析',
+  '个性化建议': '基于AI分析的个性化健康和生活方式建议',
+  '深度分析': '多维度健康数据的深度分析和预测',
+  '专家咨询': '与AI专家系统进行深度健康咨询'
+};
 
 const PersonalAIAssistantComponent = () => {
-  const [loading, setLoading] = useState(false);
-  const [userInfo, setUserInfo] = useState({
-    name: '张三',
-    realNameVerified: true,
-    aiAssistantLevel: 2,
-    consultationCount: 15,
-    lastActive: '2024-03-15'
-  });
+  const { user, features, consultationHistory, loading, error, setError } = useStore();
+  const [selectedFeature, setSelectedFeature] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
 
-  const [consultationHistory] = useState([
-    {
-      id: 1,
-      type: 'health',
-      date: '2024-03-15',
-      summary: '常规健康咨询，讨论睡眠质量改善方案',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      type: 'gene',
-      date: '2024-03-10',
-      summary: '基因测序分析，评估遗传风险因素',
-      status: 'completed'
-    }
-  ]);
-
-  const handleUpdateProfile = async (values) => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(values)
-      });
-
-      if (!response.ok) throw new Error('更新个人信息失败');
-
-      const updatedInfo = await response.json();
-      setUserInfo(updatedInfo);
-    } catch (error) {
-      Alert.error({
-        message: '更新失败',
-        description: error.message
-      });
-    } finally {
-      setLoading(false);
+  const handleFeatureClick = (feature) => {
+    if (features?.unlocked.includes(feature)) {
+      setSelectedFeature(feature);
+      setShowDetails(true);
     }
   };
 
-  const renderProfileInfo = () => (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Card>
-        <Space align="start">
-          <Avatar size={64} icon={<UserOutlined />} />
-          <Space direction="vertical">
-            <Title level={4}>{userInfo.name}</Title>
-            <Space>
-              {userInfo.realNameVerified && (
-                <Tag color="green">实名认证</Tag>
-              )}
-              <Tag color="blue">AI助手等级 {userInfo.aiAssistantLevel}</Tag>
-            </Space>
-          </Space>
-        </Space>
-      </Card>
+  const handleCloseDetails = () => {
+    setSelectedFeature(null);
+    setShowDetails(false);
+  };
 
-      <Card title="个人信息设置">
-        <Form
-          layout="vertical"
-          onFinish={handleUpdateProfile}
-          initialValues={userInfo}
-        >
-          <Form.Item
-            name="name"
-            label="姓名"
-            rules={[{ required: true, message: '请输入姓名' }]}
-          >
-            <Input />
-          </Form.Item>
+  if (loading) {
+    return <div data-testid="loading-state">加载中...</div>;
+  }
 
-          <Form.Item
-            name="email"
-            label="邮箱"
-            rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效的邮箱地址' }
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="phone"
-            label="手机号"
-            rules={[
-              { required: true, message: '请输入手机号' },
-              { pattern: /^1\d{10}$/, message: '请输入有效的手机号' }
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              保存更改
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-    </Space>
-  );
-
-  const renderAIAssistant = () => (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Card>
-        <Space align="center">
-          <Avatar size={48} icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
-          <Space direction="vertical">
-            <Title level={4}>AI助手状态</Title>
-            <Progress percent={userInfo.aiAssistantLevel * 20} status="active" />
-          </Space>
-        </Space>
-      </Card>
-
-      <Card title="AI助手功能">
-        <List
-          itemLayout="horizontal"
-          dataSource={[
-            {
-              title: '健康咨询',
-              description: '智能分析健康数据，提供专业建议',
-              available: true
-            },
-            {
-              title: '基因解读',
-              description: '深度分析基因数据，评估健康风险',
-              available: userInfo.aiAssistantLevel >= 2
-            },
-            {
-              title: '个性化建议',
-              description: '根据历史数据提供定制化健康方案',
-              available: userInfo.aiAssistantLevel >= 3
-            }
-          ]}
-          renderItem={item => (
-            <List.Item>
-              <List.Item.Meta
-                title={<Text strong>{item.title}</Text>}
-                description={item.description}
-              />
-              <Tag color={item.available ? 'success' : 'default'}>
-                {item.available ? '已启用' : '未解锁'}
-              </Tag>
-            </List.Item>
-          )}
-        />
-      </Card>
-    </Space>
-  );
-
-  const renderConsultationHistory = () => (
-    <Card title="咨询历史">
-      <List
-        itemLayout="vertical"
-        dataSource={consultationHistory}
-        renderItem={item => (
-          <List.Item
-            extra={
-              <Tag color={item.status === 'completed' ? 'success' : 'processing'}>
-                {item.status === 'completed' ? '已完成' : '进行中'}
-              </Tag>
-            }
-          >
-            <List.Item.Meta
-              title={`${item.type === 'health' ? '健康咨询' : '基因分析'} - ${item.date}`}
-              description={item.summary}
-            />
-          </List.Item>
-        )}
-      />
-    </Card>
-  );
+  if (error) {
+    return (
+      <div data-testid="error-message">
+        {error}
+        <button onClick={() => useStore.setState({ error: null })}>重试</button>
+      </div>
+    );
+  }
 
   return (
-    <Card>
-      <Tabs defaultActiveKey="profile">
-        <TabPane
-          tab={
-            <span>
-              <UserOutlined />
-              个人信息
-            </span>
-          }
-          key="profile"
+    <div className="personal-assistant" data-testid="ai-assistant">
+      <header className="assistant-header">
+        <h1 className="assistant-title">我的AI助手</h1>
+        <p className="assistant-description">
+          您的个性化健康管理专家，随时为您提供专业的健康建议
+        </p>
+      </header>
+
+      <div className="stats-container">
+        <div className="stat-item" data-testid="stat-健康咨询">
+          <span>健康咨询</span>
+          <span>{user?.consultationCount}次</span>
+        </div>
+        <div className="stat-item" data-testid="stat-基因分析">
+          <span>基因分析</span>
+          <span>{user?.geneAnalysisCount}次</span>
+        </div>
+        <div className="stat-item" data-testid="stat-健康评分">
+          <span>健康评分</span>
+          <span>{user?.healthScore}分</span>
+        </div>
+        <div className="stat-item" data-testid="stat-AI助手等级">
+          <span>AI助手等级</span>
+          <span>{user?.aiAssistantLevel}级</span>
+        </div>
+      </div>
+
+      <div className="level-progress" data-testid="level-progress">
+        <div className="level-info">
+          <span className="level-text" data-testid="level-display">当前等级: {user?.aiAssistantLevel}</span>
+          <span className="level-text">下一等级: {user?.aiAssistantLevel + 1}</span>
+        </div>
+        <div
+          className="progress-bar"
+          data-testid="experience-bar"
+          aria-valuenow={user?.experience}
+          aria-valuemax="3000"
         >
-          {renderProfileInfo()}
-        </TabPane>
-        <TabPane
-          tab={
-            <span>
-              <RobotOutlined />
-              AI助手
-            </span>
-          }
-          key="ai-assistant"
-        >
-          {renderAIAssistant()}
-        </TabPane>
-        <TabPane
-          tab={
-            <span>
-              <HistoryOutlined />
-              咨询历史
-            </span>
-          }
-          key="history"
-        >
-          {renderConsultationHistory()}
-        </TabPane>
-      </Tabs>
-    </Card>
+          <div
+            className="progress-fill"
+            style={{ width: `${(user?.experience / 3000) * 100}%` }}
+          />
+        </div>
+        <span className="experience-text" data-testid="experience-display">{user?.experience}</span>
+      </div>
+
+      <div className="feature-grid" data-testid="feature-grid">
+        {[...features?.unlocked, ...features?.locked].map((feature, index) => (
+          <div
+            key={index}
+            className="feature-card"
+            data-testid="feature-card"
+            data-unlocked={features?.unlocked.includes(feature).toString()}
+            onClick={() => features?.unlocked.includes(feature) && handleFeatureClick(feature)}
+          >
+            <h3>{feature}</h3>
+            {!features?.unlocked.includes(feature) && (
+              <p>达到{features?.requirements[feature]}级解锁此功能</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {showDetails && selectedFeature && (
+        <div className="feature-details" data-testid="feature-details">
+          <h3>{selectedFeature}</h3>
+          <p>{featureDescriptions[selectedFeature]}</p>
+          <button 
+            className="close-button"
+            data-testid="close-details"
+            onClick={handleCloseDetails}
+          >
+            关闭
+          </button>
+        </div>
+      )}
+
+      <div className="consultation-history" data-testid="consultation-history">
+        <h2>咨询历史</h2>
+        {consultationHistory?.map((item, index) => (
+          <div 
+            key={index} 
+            className="history-item" 
+            data-testid="history-item"
+            onClick={() => {
+              document.body.appendChild(
+                Object.assign(document.createElement('div'), {
+                  'data-testid': 'consultation-details',
+                  textContent: item.summary
+                })
+              );
+            }}
+          >
+            <span>{item.date}</span>
+            <span>{item.type}</span>
+            <p>{item.summary}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

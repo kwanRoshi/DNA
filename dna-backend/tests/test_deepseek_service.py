@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException
 from app.services.deepseek_service import analyze_sequence, analyze_with_deepseek
 import os
+import json
 
 @pytest.mark.asyncio
 async def test_analyze_sequence_with_empty_input():
@@ -26,13 +27,20 @@ async def test_analyze_with_deepseek_success(monkeypatch):
             self.status_code = 200
 
         async def aread(self):
-            return b'{"choices": [{"message": {"content": "Summary: Test analysis result\n\nRisk Factors:\n- High blood pressure\n- Elevated cholesterol\n\nRecommendations:\n- Regular exercise\n- Balanced diet"}}]}'
+            content = {
+                "choices": [{
+                    "message": {
+                        "content": "摘要：健康状况分析结果\n\n风险因素：\n- 血压偏高\n- 胆固醇水平升高\n- 睡眠质量差\n\n建议：\n- 规律运动\n- 均衡饮食\n- 改善作息时间"
+                    }
+                }]
+            }
+            return json.dumps(content).encode('utf-8')
 
         def json(self):
             return {
                 "choices": [{
                     "message": {
-                        "content": "Summary: Test analysis result\n\nRisk Factors:\n- High blood pressure\n- Elevated cholesterol\n\nRecommendations:\n- Regular exercise\n- Balanced diet"
+                        "content": "摘要：健康状况分析结果\n\n风险因素：\n- 血压偏高\n- 胆固醇水平升高\n- 睡眠质量差\n\n建议：\n- 规律运动\n- 均衡饮食\n- 改善作息时间"
                     }
                 }]
             }
@@ -53,15 +61,27 @@ async def test_analyze_with_deepseek_success(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", MockClient)
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test_key")
     
-    result = await analyze_with_deepseek("test health data")
+    # Test with Chinese input
+    result = await analyze_with_deepseek("最近感觉疲劳，睡眠质量差，血压偏高")
     assert result["success"] is True
     assert "analysis" in result
-    assert result["analysis"]["summary"] == "Test analysis result"
-    assert len(result["analysis"]["recommendations"]) == 2
-    assert "Regular exercise" in result["analysis"]["recommendations"]
-    assert len(result["analysis"]["riskFactors"]) == 2
-    assert "High blood pressure" in result["analysis"]["riskFactors"]
+    assert "健康状况分析结果" in result["analysis"]["summary"]
+    assert len(result["analysis"]["recommendations"]) == 3
+    assert "规律运动" in result["analysis"]["recommendations"]
+    assert "均衡饮食" in result["analysis"]["recommendations"]
+    assert "改善作息时间" in result["analysis"]["recommendations"]
+    assert len(result["analysis"]["risk_factors"]) == 3
+    assert any("血压偏高" in rf for rf in result["analysis"]["risk_factors"])
+    assert any("睡眠质量差" in rf for rf in result["analysis"]["risk_factors"])
     assert "metrics" in result["analysis"]
+
+    # Test with mixed language input
+    result = await analyze_with_deepseek("Blood pressure 偏高，feeling tired 疲劳")
+    assert result["success"] is True
+    assert "analysis" in result
+    assert "健康状况分析结果" in result["analysis"]["summary"]
+    assert len(result["analysis"]["recommendations"]) == 3
+    assert len(result["analysis"]["riskFactors"]) == 3
 
 @pytest.mark.asyncio
 async def test_analyze_with_deepseek_api_error(monkeypatch):

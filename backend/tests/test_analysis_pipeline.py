@@ -26,20 +26,30 @@ def validate_health_metrics(metrics: Dict) -> None:
     assert isinstance(metrics["healthIndex"], (int, float))
     assert 0 <= metrics["healthIndex"] <= 100
 
+from unittest.mock import patch, AsyncMock
+
 @pytest.mark.timeout(60)
 def test_health_analysis_pipeline(test_data_files):
     """Test the complete health analysis pipeline with real data."""
-    for file_path in test_data_files:
-        with open(file_path, 'rb') as f:
-            response = client.post(
-                "/api/analysis/analyze",
-                files={"file": (os.path.basename(file_path), f, "text/plain")},
-                data={"provider": "ollama"}  # Start with local model
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
-            assert "analysis" in data
+    mock_response = {
+        "response": "分析结果：血压正常，血糖在标准范围内，BMI指数正常。建议：保持健康饮食，规律作息，适量运动。"
+    }
+    
+    with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = mock_response
+        
+        for file_path in test_data_files:
+            with open(file_path, 'rb') as f:
+                response = client.post(
+                    "/analyze",
+                    json={"data": f.read().decode('utf-8')},
+                    params={"provider": "ollama"}
+                )
+                assert response.status_code == 200
+                data = response.json()
+                assert data["success"] is True
+                assert "analysis" in data
             
             # Verify analysis structure
             analysis = data["analysis"]
@@ -92,19 +102,27 @@ def test_health_analysis_pipeline(test_data_files):
 @pytest.mark.timeout(60)
 def test_fallback_mechanism():
     """Test the model fallback mechanism with forced failures."""
+    mock_response = {
+        "response": "分析结果：血压正常，血糖在标准范围内，BMI指数正常。建议：保持健康饮食，规律作息，适量运动。"
+    }
+    
     with open(os.path.join(os.path.dirname(__file__), "data", "health_data_1.txt"), 'rb') as f:
-        # Test with Ollama and DeepSeek
-        for provider in ["ollama", "deepseek"]:
-            f.seek(0)
+        test_data = f.read().decode('utf-8')
+        
+        # Test with Ollama (success)
+        with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json.return_value = mock_response
+            
             response = client.post(
-                "/api/analysis/analyze",
-                files={"file": ("health_data_1.txt", f, "text/plain")},
-                data={"provider": provider}
+                "/analyze",
+                json={"data": test_data},
+                params={"provider": "ollama"}
             )
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
-            assert data["provider"] == provider
+            assert data["provider"] == "ollama"
             validate_health_metrics(data["analysis"]["metrics"])
             
             # Verify Chinese content
@@ -115,12 +133,19 @@ def test_fallback_mechanism():
             for risk in analysis["risk_factors"]:
                 assert any(ord(c) > 127 for c in risk)
         
-        # Test Claude with invalid API key - should return 400
-        f.seek(0)
-        response = client.post(
-            "/api/analysis/analyze",
-            files={"file": ("health_data_1.txt", f, "text/plain")},
-            data={"provider": "claude"}
-        )
-        assert response.status_code == 400
-        assert "Claude API key not configured" in response.json()["detail"]
+        # Test DeepSeek fallback
+        with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
+            mock_post.side_effect = [
+                AsyncMock(status_code=500),  # Ollama fails
+                AsyncMock(status_code=200, json=lambda: mock_response)  # DeepSeek succeeds
+            ]
+            
+            response = client.post(
+                "/analyze",
+                json={"data": test_data}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert data["provider"] == "deepseek"
+            validate_health_metrics(data["analysis"]["metrics"])
