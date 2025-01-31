@@ -1,7 +1,7 @@
 import httpx
 import logging
 from fastapi import HTTPException
-from ..config import DEEPSEEK_API_KEY
+from ..config import DEEPSEEK_API_KEY, DEEPSEEK_API_ENDPOINT
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,15 +26,15 @@ async def analyze_with_deepseek(sequence: str) -> dict:
     }
     
     data = {
-        "model": "deepseek-coder-33b-instruct",
+        "model": "deepseek-r1:1.5b",
         "messages": [
             {
                 "role": "system",
-                "content": "You are a bioinformatics expert analyzing biological sequences. Provide detailed analysis including sequence type identification, features, health implications, and recommendations."
+                "content": "你是一位专业的生物信息学专家，负责分析生物序列。请提供详细的分析，包括序列类型识别、特征、健康影响和建议。所有回复必须使用中文。"
             },
             {
                 "role": "user",
-                "content": f"Please analyze this sequence and provide health insights: {sequence}"
+                "content": f"请分析这个DNA序列并提供健康见解：{sequence}"
             }
         ],
         "temperature": 0.3,
@@ -48,7 +48,7 @@ async def analyze_with_deepseek(sequence: str) -> dict:
         logger.info(f"Sending request to DeepSeek API with sequence length: {len(sequence)}")
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
+                DEEPSEEK_API_ENDPOINT,
                 json=data,
                 headers=headers
             )
@@ -86,4 +86,4 @@ async def analyze_with_deepseek(sequence: str) -> dict:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to analyze sequence: {str(e)}"
-        ) 
+        )                  

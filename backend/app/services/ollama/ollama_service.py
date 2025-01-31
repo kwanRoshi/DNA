@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 class OllamaService:
     def __init__(self):
-        self.base_url = "http://localhost:11434/api"
-        self.model = "deepseek-coder:33b-instruct"
+        self.base_url = "http://localhost:11434/api"  # Default Ollama API endpoint
+        self.model = "deepseek-r1:1.5b"
         
     async def analyze_sequence(self, sequence: str) -> Optional[Dict[str, Any]]:
         try:
@@ -16,8 +16,8 @@ class OllamaService:
                     f"{self.base_url}/generate",
                     json={
                         "model": self.model,
-                        "prompt": f"Please analyze this sequence and provide health insights: {sequence}",
-                        "system": "You are a bioinformatics expert analyzing biological sequences."
+                        "prompt": f"As a bioinformatics expert, analyze this DNA sequence and provide detailed insights: {sequence}. Include sequence type identification, features, health implications, and recommendations.",
+                        "system": "You are a bioinformatics expert specializing in DNA sequence analysis. Provide comprehensive analysis including sequence patterns, potential health implications, and actionable recommendations in Chinese language."
                     }
                 )
                 

@@ -1,6 +1,6 @@
 import httpx
 import json
-from ..config import CLAUDE_API_KEY
+from ..config import CLAUDE_API_KEY, CLAUDE_API_ENDPOINT
 
 async def analyze_with_claude(sequence: str) -> dict:
     """
@@ -24,7 +24,7 @@ async def analyze_with_claude(sequence: str) -> dict:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "https://api.anthropic.com/v1/messages",
+                CLAUDE_API_ENDPOINT,
                 headers=headers,
                 json={
                     "model": "claude-3-opus-20240229",
@@ -54,4 +54,4 @@ async def analyze_with_claude(sequence: str) -> dict:
 
     except Exception as e:
         print(f"Error in Claude analysis: {str(e)}")
-        raise Exception(f"Failed to analyze sequence with Claude: {str(e)}") 
+        raise Exception(f"Failed to analyze sequence with Claude: {str(e)}")            

@@ -35,3 +35,9 @@ yarn-error.log*
 ._*
 .Spotlight-V100
 .Trashes .env
+
+# Configuration and secrets
+backend/app/config.py
+**/.*_key
+**/.env
+**/.env.*
