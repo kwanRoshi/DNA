@@ -13,10 +13,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from pydantic import BaseModel
+
+class SequenceRequest(BaseModel):
+    sequence: str
+
 @app.post("/analyze")
-async def analyze_dna(sequence: str):
+async def analyze_dna(request: SequenceRequest):
     try:
-        result = await analyze_sequence(sequence)
+        result = await analyze_sequence(request.sequence)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

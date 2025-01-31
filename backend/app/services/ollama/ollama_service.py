@@ -16,8 +16,9 @@ class OllamaService:
                     f"{self.base_url}/generate",
                     json={
                         "model": self.model,
-                        "prompt": f"As a bioinformatics expert, analyze this DNA sequence and provide detailed insights: {sequence}. Include sequence type identification, features, health implications, and recommendations.",
-                        "system": "You are a bioinformatics expert specializing in DNA sequence analysis. Provide comprehensive analysis including sequence patterns, potential health implications, and actionable recommendations in Chinese language."
+                        "prompt": f"请分析以下DNA序列并提供健康见解：{sequence}",
+                        "system": "你是一位专业的生物信息学专家，负责分析生物序列。请提供详细的分析，包括：\n1. 序列类型识别\n2. 基本特征分析\n3. 健康影响\n4. 临床意义\n5. 建议\n所有回复必须使用中文。",
+                        "stream": False
                     }
                 )
                 

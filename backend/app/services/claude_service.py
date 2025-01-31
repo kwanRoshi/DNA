@@ -12,14 +12,14 @@ async def analyze_with_claude(sequence: str) -> dict:
         "content-type": "application/json"
     }
 
-    system_prompt = """You are a bioinformatics expert analyzing biological sequences. 
-    Provide a detailed analysis including:
-    1. Sequence Type Identification
-    2. Basic Features Analysis
-    3. Health Implications
-    4. Clinical Significance
-    5. Recommendations
-    Format the response in clear sections."""
+    system_prompt = """你是一位专业的生物信息学专家，负责分析生物序列。
+    请提供详细的分析，包括：
+    1. 序列类型识别
+    2. 基本特征分析
+    3. 健康影响
+    4. 临床意义
+    5. 建议
+    请以清晰的章节格式回复。所有回复必须使用中文。"""
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -54,4 +54,4 @@ async def analyze_with_claude(sequence: str) -> dict:
 
     except Exception as e:
         print(f"Error in Claude analysis: {str(e)}")
-        raise Exception(f"Failed to analyze sequence with Claude: {str(e)}")            
+        raise Exception(f"Failed to analyze sequence with Claude: {str(e)}")              
