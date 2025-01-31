@@ -1,31 +1,25 @@
 :root {
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --surface-color: #ffffff;
-  --background-color: #f8fafc;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --accent-color: #ec4899;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-  --radius-md: 8px;
-  --transition-default: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --primary-color: #1890ff;
+  --background-color: #f0f2f5;
+  --text-color: rgba(0, 0, 0, 0.85);
+  --border-radius: 8px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.app {
+.ant-layout {
   min-height: 100vh;
-  background: var(--background-color);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-.app-nav {
-  background: var(--surface-color);
-  box-shadow: var(--shadow-md);
-  padding: 1rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  backdrop-filter: blur(12px);
-  background-color: rgba(255,255,255,0.8);
+.ant-layout-sider {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ant-layout-header {
+  background: #fff;
+  padding: 0 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
 }
 
 .nav-content {
