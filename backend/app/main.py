@@ -17,13 +17,17 @@ from pydantic import BaseModel
 
 class SequenceRequest(BaseModel):
     sequence: str
+    provider: str = "deepseek"
 
 @app.post("/analyze")
 async def analyze_dna(request: SequenceRequest):
     try:
+        print(f"Analyzing sequence: {request.sequence[:20]}... with provider: {request.provider}")
         result = await analyze_sequence(request.sequence)
+        print(f"Analysis result: {result}")
         return result
     except Exception as e:
+        print(f"Error analyzing sequence: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

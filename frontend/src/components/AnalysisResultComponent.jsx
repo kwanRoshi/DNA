@@ -34,28 +34,18 @@ const AnalysisResultComponent = ({ analysis }) => {
     );
   }
 
-  const sections = [
-    {
-      title: '健康分析摘要',
-      icon: <AssessmentIcon />,
-      content: analysis.summary || 'No summary available'
-    },
-    {
-      title: '健康影响',
-      icon: <HealthAndSafetyIcon />,
-      content: analysis.implications || 'No health implications available'
-    },
-    {
-      title: '建议',
-      icon: <RecommendIcon />,
-      content: analysis.recommendations || 'No recommendations available'
-    },
-    {
-      title: '风险因素',
-      icon: <WarningIcon />,
-      content: analysis.risks || 'No risk factors identified'
-    }
-  ];
+  const analysisText = analysis.analysis || '';
+  const sections = analysisText.split('###').filter(Boolean).map(section => {
+    const [title, ...content] = section.split('\n').filter(Boolean);
+    return {
+      title: title.trim(),
+      icon: title.includes('健康影响') ? <HealthAndSafetyIcon /> :
+            title.includes('建议') ? <RecommendIcon /> :
+            title.includes('风险') ? <WarningIcon /> :
+            <AssessmentIcon />,
+      content: content.join('\n').trim() || '暂无数据'
+    };
+  });
 
   return (
     <Paper 
@@ -130,4 +120,4 @@ const AnalysisResultComponent = ({ analysis }) => {
   );
 };
 
-export default AnalysisResultComponent;   
+export default AnalysisResultComponent;     
