@@ -1,16 +1,15 @@
 import httpx
 import logging
-import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 class OllamaService:
     def __init__(self):
-        self.base_url = os.getenv('OLLAMA_API_URL', 'http://localhost:11434/api')
-        self.model = os.getenv('OLLAMA_MODEL', 'deepseek-coder:33b-instruct')
+        self.base_url = "http://localhost:11434/api"
+        self.model = "deepseek-coder:33b-instruct"
         
-    async def analyze_sequence(self, sequence: str) -> Dict[str, Any]:
+    async def analyze_sequence(self, sequence: str) -> Optional[Dict[str, Any]]:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
