@@ -1,77 +1,79 @@
 # DNA 数据分析平台
 
-一个用于DNA数据分析的全栈应用平台，支持文件上传、数据分析和结果可视化。
+一个用于DNA数据分析的全栈应用平台，支持文件上传、数据分析和结果可视化。支持本地优先的AI模型架构，提供完整的中文分析能力。
 
 ## 快速开始
 
-### 方法一：一键安装部署（推荐）
+### 系统要求
 
-1. 下载安装脚本并执行：
+#### 软件依赖
+- Python 3.12+ (推荐: 3.12.8)
+- Node.js 18.x (推荐: v18.20.6)
+- MongoDB 7.0+
+- Ollama 0.5.7+
+- pnpm 8.x (推荐) 或 npm 10.x
 
+#### AI模型要求
+- 主要模型: Ollama with DeepSeek-R1 1.5b (支持中文分析)
+- 备选模型: DeepSeek API (需要API密钥)
+- 可选模型: Claude API (额外备选)
+
+#### 硬件要求
+- 内存: 8GB以上 (推荐16GB)
+- 存储: 20GB可用空间
+- 系统: Linux (推荐Ubuntu 22.04 LTS)
+
+### 安装步骤
+
+1. 安装基础环境：
 ```bash
-curl -o install.sh https://raw.githubusercontent.com/yourusername/dna-platform/main/install.sh
-chmod +x install.sh
-./install.sh
+# 安装Python 3.12
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install python3.12 python3.12-venv
+
+# 安装Node.js 18
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.nvm/nvm.sh
+nvm install 18.20.6
+nvm use 18.20.6
+
+# 安装pnpm
+npm install -g pnpm@latest
+
+# 安装MongoDB
+bash backend/install_mongodb.sh
+
+# 安装Ollama和模型
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull deepseek-r1:1.5b
 ```
 
-或者直接运行：
-
+2. 克隆项目：
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/yourusername/dna-platform/main/install.sh)"
+git clone https://github.com/kwanRoshi/DNA.git
+cd DNA
 ```
 
-2. 访问应用：
-   - 前端界面：http://localhost:5173
-   - API接口：http://localhost:3000
-
-### 方法二：手动安装
-
-#### 前置要求
-
-- Node.js >= 18
-- MongoDB >= 6.0
-- Docker (可选)
-- Git
-
-#### 本地开发环境搭建
-
-1. 克隆仓库：
+3. 后端设置：
 ```bash
-git clone https://github.com/yourusername/dna-platform.git
-cd dna-platform
-```
-
-2. 安装依赖：
-```bash
-# 安装后端依赖
 cd backend
-npm install
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
-# 安装前端依赖
-cd ../frontend
-npm install --legacy-peer-deps
+# 配置环境
+cp config_example.env .env
+cp deployment.env.example deployment.env
 ```
 
-3. 配置环境变量：
+4. 前端设置：
 ```bash
-# 后端配置
-cd backend
-cp .env.example .env
-
-# 前端配置
-cd ../frontend
-cp .env.example .env
-```
-
-4. 启动服务：
-```bash
-# 启动后端服务
-cd backend
-npm start
-
-# 新开终端，启动前端服务
 cd frontend
-npm run dev
+pnpm install
+cp .env.example .env
+cp deployment.env.example deployment.env
 ```
 
 #### Docker 部署
@@ -87,81 +89,142 @@ docker-compose up --build
 
 ```
 .
-├── backend/                 # 后端服务
-│   ├── controllers/        # 业务逻辑控制器
-│   ├── models/            # 数据模型
-│   ├── routes/            # API路由
-│   ├── config/            # 配置文件
-│   └── server.js          # 入口文件
-├── frontend/               # 前端应用
+├── backend/                 # Python后端服务
+│   ├── app/               # 主应用目录
+│   │   ├── models/       # 数据模型
+│   │   ├── routers/      # API路由
+│   │   ├── services/     # AI服务集成
+│   │   └── utils/        # 工具函数
+│   ├── tests/            # 测试目录
+│   └── config/           # 配置文件
+├── frontend/              # React前端应用
 │   ├── src/
-│   │   ├── components/    # React组件
-│   │   ├── services/      # API服务
-│   │   └── utils/         # 工具函数
-│   └── index.html         # 入口HTML
-└── docker-compose.yml      # Docker编排配置
+│   │   ├── components/   # React组件
+│   │   ├── services/     # API服务
+│   │   └── utils/        # 工具函数
+│   └── tests/            # 前端测试
 ```
 
-## 环境变量配置
+## 环境配置
 
-### 后端 (.env)
-
+### 后端配置 (.env)
 ```env
-PORT=3000
-MONGODB_URI=mongodb://localhost:27017/dna_analysis
-JWT_SECRET=your_jwt_secret_key_here
-NODE_ENV=development
+# AI模型配置
+OLLAMA_ENABLED=true
+OLLAMA_MODEL=deepseek-r1:1.5b
+OLLAMA_API_BASE=http://localhost:11434
+OLLAMA_TIMEOUT_SECONDS=120
+
+# 数据库配置
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=dna_analysis
+
+# 模型优先级配置
+MODEL_FALLBACK_PRIORITY=ollama,deepseek,claude
 ```
 
-### 前端 (.env)
-
+### 前端配置 (.env)
 ```env
-VITE_API_URL=http://localhost:3000/api
-VITE_MAX_UPLOAD_SIZE=5242880
+# API配置
+VITE_API_URL=http://localhost:8080
+VITE_WEBSOCKET_URL=ws://localhost:8080/ws
+
+# 功能开关
+VITE_ENABLE_CHINESE_UI=true
+VITE_ENABLE_LOCAL_MODEL=true
 ```
 
 ## 功能特性
 
-- 🔐 安全的用户认证
-- 📊 DNA数据分析
-- 📁 文件上传与管理
+- 🤖 本地优先的AI模型架构
+- 🌏 完整的中文分析支持
+- 📊 DNA序列分析
+- 🏥 健康数据评估
 - 📈 结果可视化
 - 📱 响应式设计
 
 ## 技术栈
 
 ### 后端
-- Node.js + Express
-- MongoDB + Mongoose
-- JWT认证
-- Docker容器化
+- Python 3.12 + FastAPI
+- MongoDB
+- Ollama (本地AI模型)
+- DeepSeek API (备选)
+- Claude API (可选备选)
 
 ### 前端
 - React 18
 - Vite
-- Axios
+- Ant Design
 - Modern CSS
+
+## 运行和测试
+
+### 启动服务
+```bash
+# 启动MongoDB
+sudo systemctl start mongod
+
+# 启动Ollama
+ollama serve &
+ollama run deepseek-r1:1.5b
+
+# 启动后端 (新终端)
+cd backend
+source venv/bin/activate
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+
+# 启动前端 (新终端)
+cd frontend
+pnpm dev
+```
+
+### 运行测试
+```bash
+# 后端测试
+cd backend
+pytest tests/ -v --cov=app
+
+# 前端测试
+cd frontend
+pnpm test
+```
 
 ## 常见问题
 
-1. 如果遇到 MongoDB 连接错误：
-   - 确保 MongoDB 服务已启动
-   - 检查连接字符串是否正确
+1. Ollama模型问题：
+```bash
+# 检查模型状态
+ollama list
+# 重新下载模型
+ollama pull deepseek-r1:1.5b --force
+```
 
-2. 如果遇到前端依赖安装错误：
-   - 使用 `npm install --legacy-peer-deps`
-   - 或者清除 node_modules 后重新安装
+2. MongoDB问题：
+```bash
+# 检查服务状态
+sudo systemctl status mongod
+# 重启服务
+sudo systemctl restart mongod
+```
 
-3. 如果遇到 Docker 启动问题：
-   - 确保 Docker Desktop 已启动
-   - 检查端口是否被占用
+3. 环境验证：
+```bash
+# 验证后端环境
+cd backend
+python verify_environment.py
+
+# 验证前端环境
+cd frontend
+node verify_node_deps.js
+```
 
 ## 贡献指南
 
 1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m '添加新特性'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 提交 Pull Request
 
 ## 许可证
