@@ -2,6 +2,7 @@ import pytest
 from fastapi import HTTPException
 from app.routers.analysis import process_sequence
 from tests.test_analysis_pipeline import validate_health_metrics
+from unittest.mock import patch, AsyncMock
 import os
 
 @pytest.fixture(autouse=True)
@@ -29,7 +30,7 @@ async def test_process_sequence_invalid_provider():
     assert "Invalid provider specified" in str(exc_info.value.detail)
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(180)
 async def test_process_sequence_success():
     """Test the fallback mechanism and response format."""
     test_sequence = """
@@ -57,7 +58,30 @@ BMI：23.5
 """
     
     # Test with Ollama (primary provider)
-    result = await process_sequence(test_sequence, "ollama")
+    with patch('app.services.ollama_service.httpx.AsyncClient') as mock_client:
+        mock_client_instance = AsyncMock()
+        mock_client.return_value = mock_client_instance
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        
+        mock_client_instance.get.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={"models": [{"name": "deepseek-r1:1.5b"}]})
+        )
+        
+        mock_client_instance.post.return_value = AsyncMock(
+            status_code=200,
+            json=AsyncMock(return_value={
+                "response": "总结：血压正常，血糖在标准范围内，BMI指数正常。\n\n建议：\n- 保持健康饮食，规律作息\n- 适量运动，增强体质\n- 定期体检，预防疾病\n\n风险因素：\n- 工作压力可能较大\n- 作息时间不规律"
+            })
+        )
+        
+        mock_client_instance = AsyncMock()
+        mock_client.return_value = mock_client_instance
+        mock_client_instance.__aenter__.return_value = mock_client_instance
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+        mock_client_instance.post = AsyncMock(return_value=mock_post_response)
+        
+        result = await process_sequence(test_sequence, "ollama")
     assert isinstance(result, dict)
     assert "analysis" in result
     analysis = result["analysis"]

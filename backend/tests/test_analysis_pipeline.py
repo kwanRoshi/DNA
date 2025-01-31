@@ -38,7 +38,18 @@ from .data.mock_responses import MOCK_HEALTH_RESPONSE, format_mock_response
 
 @pytest.fixture
 def mock_response():
-    return MOCK_HEALTH_RESPONSE
+    return {
+        "summary": "血压正常，血糖在标准范围内，BMI指数正常。",
+        "recommendations": [
+            "保持健康饮食，规律作息",
+            "适量运动，增强体质", 
+            "定期体检，预防疾病"
+        ],
+        "risk_factors": [
+            "工作压力可能较大",
+            "作息时间不规律"
+        ]
+    }
 
 @pytest.mark.timeout(180)
 def test_health_analysis_pipeline(test_data_files, app_client):
@@ -150,7 +161,7 @@ def test_fallback_mechanism(app_client, mock_response):
             )
             mock_ollama.post.return_value = AsyncMock(
                 status_code=200,
-                json=AsyncMock(return_value={"response": mock_response})
+                json=AsyncMock(return_value={"response": format_mock_response(mock_response)})
             )
             mock_ollama_client.return_value = mock_ollama
 
@@ -159,7 +170,7 @@ def test_fallback_mechanism(app_client, mock_response):
             mock_deepseek.__aenter__.return_value = mock_deepseek
             mock_deepseek.post.return_value = AsyncMock(
                 status_code=200,
-                json=AsyncMock(return_value={"choices": [{"message": {"content": mock_response}}]})
+                json=AsyncMock(return_value={"choices": [{"message": {"content": format_mock_response(mock_response)}}]})
             )
             mock_deepseek_client.return_value = mock_deepseek
 
@@ -168,7 +179,7 @@ def test_fallback_mechanism(app_client, mock_response):
             mock_claude.__aenter__.return_value = mock_claude
             mock_claude.post.return_value = AsyncMock(
                 status_code=200,
-                json=AsyncMock(return_value={"content": [{"text": mock_response}]})
+                json=AsyncMock(return_value={"content": [{"text": format_mock_response(mock_response)}]})
             )
             mock_claude_client.return_value = mock_claude
             
